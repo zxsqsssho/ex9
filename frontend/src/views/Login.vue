@@ -38,44 +38,35 @@
 </template>
 
 <script setup>
-import { reactive } from "vue"
-import { useRouter } from "vue-router"
-import { useUserStore } from "@/stores/user"
-import { ElMessage } from "element-plus"
+import { reactive } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const form = reactive({
-  username: "",
-  password: ""
+  username: '',
+  password: ''
 })
 
 const handleLogin = async () => {
   if (!form.username || !form.password) {
-    ElMessage.warning("请输入用户名和密码")
+    ElMessage.warning('请输入用户名和密码')
     return
   }
 
   try {
-    // ===== 1️⃣ 调用 store 登录 =====
     await userStore.login(form)
-
-    // ===== 2️⃣ 成功提示 =====
-    ElMessage.success("登录成功")
-
-    // ===== 3️⃣ 跳转首页 =====
-    router.replace("/home")
-  } catch (error) {
-    // ===== 4️⃣ 失败提示 =====
-    const msg =
-        error?.response?.data?.msg ||
-        error?.message ||
-        "登录失败"
-    ElMessage.error(msg)
+    ElMessage.success('登录成功')
+    router.replace('/home')
+  } catch (err) {
+    ElMessage.error(err.message || '登录失败')
   }
 }
 </script>
+
 
 
 

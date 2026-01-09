@@ -1,34 +1,42 @@
 import { defineStore } from 'pinia'
-import axios from '@/utils/request'
+import request from '@/utils/request'
 
 export const useUserStore = defineStore('user', {
     state: () => ({
         token: localStorage.getItem('token') || '',
-        userInfo: JSON.parse(localStorage.getItem('userInfo')) || {},
-        userRole: localStorage.getItem('userRole') || ''
+        userInfo: JSON.parse(localStorage.getItem('userInfo')) || null,
+        role: localStorage.getItem('userRole') || ''
     }),
+
     actions: {
         // 登录
-        // user.js
         async login(loginForm) {
-            const res = await axios.post('/api/user/login', loginForm)
+            const res = await request.post('/auth/login', loginForm)
+            // ⭐ res 就是 ApiResponse
             const { token, userInfo, role } = res.data
 
             this.token = token
             this.userInfo = userInfo
-            this.userRole = role
+            this.role = role
 
             localStorage.setItem('token', token)
             localStorage.setItem('userInfo', JSON.stringify(userInfo))
             localStorage.setItem('userRole', role)
 
-            return res.data
+            return res
         },
-        // 退出登录
+
+        // 获取当前用户
+        async fetchCurrentUser() {
+            const res = await request.get('/auth/current-user')
+            this.userInfo = res.data
+            localStorage.setItem('userInfo', JSON.stringify(res.data))
+        },
+
         logout() {
             this.token = ''
-            this.userInfo = {}
-            this.userRole = ''
+            this.userInfo = null
+            this.role = ''
             localStorage.clear()
         }
     }

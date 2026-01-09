@@ -55,11 +55,11 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
     const userStore = useUserStore()
     if (to.meta.requiresAuth && !userStore.token) {
-        ElMessage.warning('请先登录！')
         next('/login')
         return
     }
-    next() // 必须调用next()，否则路由不会跳转
+    next()
 })
+
 
 export default router

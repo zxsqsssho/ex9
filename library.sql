@@ -11,7 +11,7 @@
  Target Server Version : 50744
  File Encoding         : 65001
 
- Date: 09/01/2026 17:48:48
+ Date: 09/01/2026 20:43:09
 */
 
 SET NAMES utf8mb4;
@@ -23,15 +23,15 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `books`;
 CREATE TABLE `books`  (
   `book_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '图书ID',
-  `book_name` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '图书名称',
-  `author` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '作者',
-  `isbn` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT 'ISBN编号',
-  `category` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '图书分类',
+  `book_name` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `author` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `isbn` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `category` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
   `branch_id` int(11) NOT NULL COMMENT '所属分馆ID',
-  `book_type` enum('book','magazine') CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '类型：图书/杂志',
+  `book_type` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
   `total_num` int(11) NOT NULL DEFAULT 0 COMMENT '总数量',
   `available_num` int(11) NOT NULL DEFAULT 0 COMMENT '可借数量',
-  `status` enum('normal','out_of_stock') CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT 'normal' COMMENT '状态：正常/缺货',
+  `status` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
   `create_time` datetime(0) NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`book_id`) USING BTREE,
   UNIQUE INDEX `isbn`(`isbn`) USING BTREE,
@@ -66,8 +66,8 @@ CREATE TABLE `borrow_records`  (
 DROP TABLE IF EXISTS `branches`;
 CREATE TABLE `branches`  (
   `branch_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '分馆ID',
-  `branch_name` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '分馆名称',
-  `address` varchar(200) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT '' COMMENT '分馆地址',
+  `branch_name` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `address` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
   `create_time` datetime(0) NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`branch_id`) USING BTREE,
   UNIQUE INDEX `branch_name`(`branch_name`) USING BTREE
@@ -222,7 +222,7 @@ CREATE TABLE `users`  (
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES (1, 1, '2026-01-08 23:40:02.047687', 'admin@library.com', '$2a$10$3gnPPjre7yJlu393fFeXuOHcAKBd1zyFzxsg3HOQIukW9FJkXmXEq', NULL, '系统管理员', 'ACTIVE', '2026-01-08 23:40:02.047687', 'SYSTEM_ADMIN', 'admin', 1);
+INSERT INTO `users` VALUES (1, 1, '2026-01-08 23:40:02.047687', 'admin@library.com', 'admin', NULL, '系统管理员', 'ACTIVE', '2026-01-08 23:40:02.047687', 'SYSTEM_ADMIN', 'admin', 1);
 INSERT INTO `users` VALUES (2, 1, '2026-01-08 23:40:02.142406', 'branchadmin1@library.com', '$2a$10$gyIGQrtK5liZNaOwpMdCg.HBK1jQxbmkI/PVlkIIy.r7JDOkWl2Ge', NULL, '校本部管理员', 'ACTIVE', '2026-01-08 23:40:02.142406', 'BRANCH_ADMIN', 'branchadmin1', 2);
 INSERT INTO `users` VALUES (3, 2, '2026-01-08 23:40:02.239476', 'branchadmin2@library.com', '$2a$10$ODoEgRQGf4UpA5fqISsT/uvRLOwNmjmYpZSQSWGQN3rNMhVf4I/XC', NULL, '黄塘校区管理员', 'ACTIVE', '2026-01-08 23:40:02.239476', 'BRANCH_ADMIN', 'branchadmin2', 2);
 INSERT INTO `users` VALUES (4, 3, '2026-01-08 23:40:02.333263', 'branchadmin3@library.com', '$2a$10$ZSKovxNp/.wox4m87un.lONKVFkFdCsX1cw/MKS9bQIU3wy/V7I0S', NULL, '程江校区管理员', 'ACTIVE', '2026-01-08 23:40:02.333263', 'BRANCH_ADMIN', 'branchadmin3', 2);
