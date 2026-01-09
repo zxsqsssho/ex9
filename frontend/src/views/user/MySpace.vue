@@ -109,6 +109,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from '@/utils/request'
+import { ElMessage } from 'element-plus'
+
 
 const activeTab = ref('borrowing')
 const loading = ref(false)

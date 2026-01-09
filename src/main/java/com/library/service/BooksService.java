@@ -1,30 +1,15 @@
 //src/main/java/com/library/service/BooksService.java
 package com.library.service;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.library.entity.Books;
-import com.library.dto.BookQueryDTO;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 
 public interface BooksService {
-    /**
-     * 多条件分页查询图书
-     * @param queryDTO 查询条件
-     * @return 分页结果
-     */
-    Page<Books> queryBooksByCondition(BookQueryDTO queryDTO);
-
-    /**
-     * 全局查询（跨分馆）
-     * @param queryDTO 查询条件
-     * @return 图书列表
-     */
-    List<Books> globalQueryBooks(BookQueryDTO queryDTO);
-
-    /**
-     * 根据ID查询图书详情
-     * @param bookId 图书ID
-     * @return 图书详情
-     */
-    Books getBookDetail(Integer bookId);
+    // 移除MyBatis-Plus的Page，替换为JPA的Page
+    Page<Books> findAll(Pageable pageable); // 分页查询所有
+    Books findById(Long id); // 根据主键查询
+    Books save(Books books); // 新增/修改
+    void deleteById(Long id); // 根据主键删除
 }

@@ -1,16 +1,23 @@
 //src/main/java/com/library/entity/Branches.java
 package com.library.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Table;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "branches") // 对应数据库表名
 @Data
-@TableName("branches")
 public class Branches {
-    @TableId(type = IdType.AUTO)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // 自增主键（对应MySQL的AUTO_INCREMENT）
+    @jakarta.persistence.Id
     private Integer branchId;        // 分馆ID
     private String branchName;       // 分馆名称
     private String address;          // 分馆地址

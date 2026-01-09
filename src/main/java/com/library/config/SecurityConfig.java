@@ -36,10 +36,12 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // 核心修正：构造器传入UserDetailsService，移除setUserDetailsService调用
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
+        // 新版本要求构造器传入UserDetailsService
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
+        // 仅保留密码编码器的设置
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
@@ -52,7 +54,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080"));
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:8081", // ✅ 前端 dev
+                "http://localhost:8080"  // 如有需要
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
@@ -63,14 +68,16 @@ public class SecurityConfig {
         return source;
     }
 
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+
                 .authorizeHttpRequests(auth -> auth
                         // ========== 公开接口（无需认证） ==========
                         .requestMatchers(
@@ -98,8 +105,8 @@ public class SecurityConfig {
                         // 默认：所有其他请求都需要认证
                         .anyRequest().authenticated()
                 )
-                .authenticationProvider(authenticationProvider())
-                .httpBasic(httpBasic -> {});
+                .authenticationProvider(authenticationProvider());
+//                .httpBasic(httpBasic -> {});
 
         return http.build();
     }

@@ -84,10 +84,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import axios from '@/utils/request'
 
 const router = useRouter()
+const userStore = useUserStore()
 const loading = ref(false)
 const bookList = ref([])
 const branchList = ref([])
@@ -106,6 +109,9 @@ const queryForm = ref({
   pageSize: 10
 })
 
+// 判断是否管理员
+const isAdmin = ['ROLE_SYSTEM_ADMIN', 'ROLE_BRANCH_ADMIN'].includes(userStore.role)
+
 // 初始化
 onMounted(() => {
   getBranchList()
@@ -114,19 +120,32 @@ onMounted(() => {
 
 // 获取分馆列表
 const getBranchList = async () => {
-  const res = await axios.get('/api/branches')
-  branchList.value = res.data
+  if (isAdmin) {
+    try {
+      const res = await axios.get('/branches')
+      branchList.value = res.data
+    } catch (err) {
+      ElMessage.error('获取分馆列表失败：' + (err.response?.data?.msg || err.message))
+      branchList.value = [{ branchId: 0, branchName: '默认分馆' }] // 后备列表
+    }
+  } else {
+    // 普通用户使用默认分馆列表
+    branchList.value = [
+      { branchId: 0, branchName: '总馆' }
+    ]
+    queryForm.value.branchId = 0
+  }
 }
 
 // 多条件查询图书
 const handleQuery = async () => {
   loading.value = true
   try {
-    const res = await axios.post('/api/books/query', queryForm.value)
+    const res = await axios.post('/books/query', queryForm.value)
     bookList.value = res.data.records
     total.value = res.data.total
   } catch (error) {
-    ElMessage.error('查询失败：' + error.response.data.msg)
+    ElMessage.error('查询失败：' + (error.response?.data?.msg || error.message))
   } finally {
     loading.value = false
   }
@@ -139,7 +158,7 @@ const resetQuery = () => {
     author: '',
     isbn: '',
     category: '',
-    branchId: '',
+    branchId: isAdmin ? '' : 0,
     bookType: '',
     status: '',
     pageNum: 1,
@@ -168,17 +187,18 @@ const toDetail = (bookId) => {
 // 借阅图书
 const handleBorrow = async (book) => {
   try {
-    await axios.post('/api/borrow/create', {
+    await axios.post('/borrow/create', {
       bookId: book.bookId,
       branchId: book.branchId
     })
     ElMessage.success('借阅申请提交成功')
     handleQuery() // 刷新列表
   } catch (error) {
-    ElMessage.error('借阅失败：' + error.response.data.msg)
+    ElMessage.error('借阅失败：' + (error.response?.data?.msg || error.message))
   }
 }
 </script>
+
 
 <style scoped>
 .book-query-page {

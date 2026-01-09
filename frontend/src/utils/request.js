@@ -1,22 +1,15 @@
+// src/utils/request.js
 import axios from 'axios'
 import router from '@/router'
 import { useUserStore } from '@/stores/user'
 
 const service = axios.create({
     baseURL: '/api',
-    timeout: 5000
+    timeout: 5000,
+    withCredentials: true // ⭐ 必须
 })
 
-// 请求拦截：带 token
-service.interceptors.request.use((config) => {
-    const userStore = useUserStore()
-    if (userStore.token) {
-        config.headers.Authorization = `Bearer ${userStore.token}`
-    }
-    return config
-})
-
-// 响应拦截：统一处理 ApiResponse
+// 响应拦截：统一 ApiResponse
 service.interceptors.response.use(
     (response) => {
         const res = response.data

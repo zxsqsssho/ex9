@@ -60,11 +60,12 @@ const handleLogin = async () => {
   try {
     await userStore.login(form)
     ElMessage.success('登录成功')
-    router.replace('/home')
-  } catch (err) {
-    ElMessage.error(err.message || '登录失败')
+    router.replace('/home') // ⭐
+  } catch (e) {
+    ElMessage.error(e.message || '登录失败')
   }
 }
+
 </script>
 
 

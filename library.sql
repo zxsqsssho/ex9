@@ -11,7 +11,7 @@
  Target Server Version : 50744
  File Encoding         : 65001
 
- Date: 09/01/2026 20:43:09
+ Date: 09/01/2026 21:55:22
 */
 
 SET NAMES utf8mb4;
@@ -222,7 +222,7 @@ CREATE TABLE `users`  (
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES (1, 1, '2026-01-08 23:40:02.047687', 'admin@library.com', 'admin', NULL, '系统管理员', 'ACTIVE', '2026-01-08 23:40:02.047687', 'SYSTEM_ADMIN', 'admin', 1);
+INSERT INTO `users` VALUES (1, 1, '2026-01-08 23:40:02.047687', 'admin@library.com', '$2a$10$XsL/dnY5KjNDzBxN4t/Zwu1D3lPjuffo3eVw5T5qoc4QtJgz68UlO', NULL, '系统管理员', 'ACTIVE', '2026-01-08 23:40:02.047687', 'SYSTEM_ADMIN', 'admin', 1);
 INSERT INTO `users` VALUES (2, 1, '2026-01-08 23:40:02.142406', 'branchadmin1@library.com', '$2a$10$gyIGQrtK5liZNaOwpMdCg.HBK1jQxbmkI/PVlkIIy.r7JDOkWl2Ge', NULL, '校本部管理员', 'ACTIVE', '2026-01-08 23:40:02.142406', 'BRANCH_ADMIN', 'branchadmin1', 2);
 INSERT INTO `users` VALUES (3, 2, '2026-01-08 23:40:02.239476', 'branchadmin2@library.com', '$2a$10$ODoEgRQGf4UpA5fqISsT/uvRLOwNmjmYpZSQSWGQN3rNMhVf4I/XC', NULL, '黄塘校区管理员', 'ACTIVE', '2026-01-08 23:40:02.239476', 'BRANCH_ADMIN', 'branchadmin2', 2);
 INSERT INTO `users` VALUES (4, 3, '2026-01-08 23:40:02.333263', 'branchadmin3@library.com', '$2a$10$ZSKovxNp/.wox4m87un.lONKVFkFdCsX1cw/MKS9bQIU3wy/V7I0S', NULL, '程江校区管理员', 'ACTIVE', '2026-01-08 23:40:02.333263', 'BRANCH_ADMIN', 'branchadmin3', 2);
