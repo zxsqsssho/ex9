@@ -9,22 +9,20 @@ export const useUserStore = defineStore('user', {
     }),
     actions: {
         // 登录
+        // user.js
         async login(loginForm) {
-            try {
-                const res = await axios.post('/api/user/login', loginForm)
-                const { token, userInfo, role } = res.data
-                this.token = token
-                this.userInfo = userInfo
-                this.userRole = role
-                // 持久化存储
-                localStorage.setItem('token', token)
-                localStorage.setItem('userInfo', JSON.stringify(userInfo))
-                localStorage.setItem('userRole', role)
-                return true
-            } catch (error) {
-                ElMessage.error('登录失败：' + error.response.data.msg)
-                return false
-            }
+            const res = await axios.post('/api/user/login', loginForm)
+            const { token, userInfo, role } = res.data
+
+            this.token = token
+            this.userInfo = userInfo
+            this.userRole = role
+
+            localStorage.setItem('token', token)
+            localStorage.setItem('userInfo', JSON.stringify(userInfo))
+            localStorage.setItem('userRole', role)
+
+            return res.data
         },
         // 退出登录
         logout() {

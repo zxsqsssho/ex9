@@ -1,85 +1,183 @@
 <template>
-  <div class="login-container">
-    <el-card class="login-card">
-      <h2 class="login-title">图书借阅系统</h2>
-      <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="80px">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="loginForm.username" placeholder="请输入用户名"></el-input>
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="loginForm.password" type="password" placeholder="请输入密码"></el-input>
-        </el-form-item>
-        <el-form-item label="用户类型" prop="userType">
-          <el-select v-model="loginForm.userType" placeholder="请选择用户类型">
-            <el-option label="学生" value="STUDENT"></el-option>
-            <el-option label="教师" value="TEACHER"></el-option>
-            <el-option label="管理员" value="ADMIN"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleLogin" class="login-btn">登录</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+  <div class="login-page">
+    <div class="login-container">
+      <!-- 左侧系统说明 -->
+      <div class="login-left">
+        <h1>图书借阅管理系统</h1>
+        <p>Library Borrowing Management System</p>
+      </div>
+
+      <!-- 右侧登录表单 -->
+      <div class="login-right">
+        <h2>用户登录</h2>
+
+        <form @submit.prevent="handleLogin">
+          <div class="form-item">
+            <input
+                type="text"
+                v-model="form.username"
+                placeholder="用户名"
+            />
+          </div>
+
+          <div class="form-item">
+            <input
+                type="password"
+                v-model="form.password"
+                placeholder="密码"
+            />
+          </div>
+
+          <button class="login-btn" type="submit">
+            登录
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useUserStore } from '@/stores/user'
-import { useRouter } from 'vue-router'
+import { reactive } from "vue"
+import { useRouter } from "vue-router"
+import { useUserStore } from "@/stores/user"
+import { ElMessage } from "element-plus"
 
-const loginFormRef = ref(null)
 const router = useRouter()
 const userStore = useUserStore()
 
-// 登录表单
-const loginForm = ref({
-  username: '',
-  password: '',
-  userType: ''
+const form = reactive({
+  username: "",
+  password: ""
 })
 
-// 校验规则
-const loginRules = ref({
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  userType: [{ required: true, message: '请选择用户类型', trigger: 'change' }]
-})
-
-// 登录方法
 const handleLogin = async () => {
+  if (!form.username || !form.password) {
+    ElMessage.warning("请输入用户名和密码")
+    return
+  }
+
   try {
-    await loginFormRef.value.validate()
-    const res = await userStore.login(loginForm.value)
-    if (res) {
-      ElMessage.success('登录成功')
-      router.push('/home/book-query')
-    }
+    // ===== 1️⃣ 调用 store 登录 =====
+    await userStore.login(form)
+
+    // ===== 2️⃣ 成功提示 =====
+    ElMessage.success("登录成功")
+
+    // ===== 3️⃣ 跳转首页 =====
+    router.replace("/home")
   } catch (error) {
-    ElMessage.error('表单校验失败，请检查输入')
+    // ===== 4️⃣ 失败提示 =====
+    const msg =
+        error?.response?.data?.msg ||
+        error?.message ||
+        "登录失败"
+    ElMessage.error(msg)
   }
 }
 </script>
 
+
+
 <style scoped>
-.login-container {
+
+/* 登录页 */
+.login-page {
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2b5876, #4e4376);
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background-color: #f5f5f5;
+
+  box-sizing: border-box;
 }
-.login-card {
-  width: 400px;
-  padding: 20px;
+
+
+/* 登录容器 */
+.login-container {
+  width: 1395px;
+  max-width: 90%;
+  height: 420px;
+  background: #fff;
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
-.login-title {
-  text-align: center;
+
+/* 左侧介绍 */
+.login-left {
+  flex: 1;
+  background: #34495e;
+  color: #fff;
+  padding: 60px 40px;
+}
+
+.login-left h1 {
+  font-size: 28px;
   margin-bottom: 20px;
-  color: #1989fa;
 }
+
+.login-left p {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* 右侧登录 */
+.login-right {
+  flex: 1;
+  padding: 60px 40px;
+}
+
+.login-right h2 {
+  margin-bottom: 30px;
+  font-size: 22px;
+  color: #333;
+}
+
+.form-item {
+  margin-bottom: 20px;
+}
+
+.form-item input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-item input:focus {
+  outline: none;
+  border-color: #4e4376;
+}
+
 .login-btn {
   width: 100%;
+  height: 42px;
+  background: #4e4376;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.login-btn:hover {
+  background: #3b2f5c;
+}
+
+/* 小屏幕兼容（但不是竖屏风） */
+@media screen and (max-width: 1000px) {
+  .login-container {
+    width: 90%;
+    height: auto;
+  }
+
+  .login-left {
+    display: none;
+  }
 }
 </style>
