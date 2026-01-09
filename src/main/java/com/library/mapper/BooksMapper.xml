@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.library.mapper.BooksMapper">
+    <select id="queryBooksByCondition" resultType="com.library.entity.Books">
+        SELECT * FROM books
+        <where>
+            <!-- 书名模糊查询 -->
+            <if test="dto.bookName != null and dto.bookName != ''">
+                AND book_name LIKE CONCAT('%', #{dto.bookName}, '%')
+            </if>
+            <!-- 作者模糊查询 -->
+            <if test="dto.author != null and dto.author != ''">
+                AND author LIKE CONCAT('%', #{dto.author}, '%')
+            </if>
+            <!-- ISBN精确查询 -->
+            <if test="dto.isbn != null and dto.isbn != ''">
+                AND isbn = #{dto.isbn}
+            </if>
+            <!-- 分类筛选 -->
+            <if test="dto.category != null and dto.category != ''">
+                AND category = #{dto.category}
+            </if>
+            <!-- 分馆筛选 -->
+            <if test="dto.branchId != null">
+                AND branch_id = #{dto.branchId}
+            </if>
+            <!-- 类型筛选 -->
+            <if test="dto.bookType != null and dto.bookType != ''">
+                AND book_type = #{dto.bookType}
+            </if>
+            <!-- 状态筛选 -->
+            <if test="dto.status != null and dto.status != ''">
+                AND status = #{dto.status}
+            </if>
+        </where>
+        <!-- 按创建时间降序 -->
+        ORDER BY create_time DESC
+    </select>
+</mapper>

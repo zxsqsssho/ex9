@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书查询系统</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .search-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+        }
+        .form-col {
+            flex: 1;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .results-section {
+            margin-top: 20px;
+        }
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .book-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: white;
+            transition: box-shadow 0.3s;
+        }
+        .book-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .book-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .book-author {
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .book-info {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        .book-status {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        .status-available {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-unavailable {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .pagination {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .pagination button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        .pagination button.active {
+            background: #007bff;
+            color: white;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <div class="header">
+            <h1>📚 嘉应学院图书馆 - 图书查询系统</h1>
+            <p>全球查询 | 多条件筛选 | 实时库存</p>
+        </div>
+
+        <div class="search-section">
+            <h3>🔍 图书检索</h3>
+            <div class="form-row">
+                <div class="form-col">
+                    <label for="keyword">关键词搜索</label>
+                    <input
+                            type="text"
+                            id="keyword"
+                            v-model="searchForm.keyword"
+                            placeholder="书名/作者/ISBN"
+                    >
+                </div>
+                <div class="form-col">
+                    <label for="category">分类筛选</label>
+                    <select id="category" v-model="searchForm.category">
+                        <option value="">全部分类</option>
+                        <option value="计算机">计算机</option>
+                        <option value="文学">文学</option>
+                        <option value="历史">历史</option>
+                        <option value="科学">科学</option>
+                        <option value="艺术">艺术</option>
+                        <option value="经济">经济</option>
+                    </select>
+                </div>
+                <div class="form-col">
+                    <label for="branch">分馆筛选</label>
+                    <select id="branch" v-model="searchForm.branchId">
+                        <option value="">全部分馆</option>
+                        <option value="1">校本部</option>
+                        <option value="2">黄塘校区</option>
+                        <option value="3">程江校区</option>
+                        <option value="4">江南校区</option>
+                        <option value="5">丰顺校区</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row" style="margin-top: 10px;">
+                <div class="form-col">
+                    <label for="bookType">类型筛选</label>
+                    <select id="bookType" v-model="searchForm.bookType">
+                        <option value="">全部类型</option>
+                        <option value="book">图书</option>
+                        <option value="magazine">杂志</option>
+                    </select>
+                </div>
+                <div class="form-col">
+                    <label for="status">状态筛选</label>
+                    <select id="status" v-model="searchForm.status">
+                        <option value="">全部状态</option>
+                        <option value="available">可借阅</option>
+                        <option value="unavailable">不可借阅</option>
+                    </select>
+                </div>
+                <div class="form-col">
+                    <button @click="searchBooks" style="width: 100%;">🔍 搜索图书</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <h3>📋 搜索结果 ({{ total }} 本)</h3>
+
+            <div v-if="loading" class="loading">
+                🔄 加载中...
+            </div>
+
+            <div v-else-if="books.length === 0" class="no-results">
+                😔 没有找到符合条件的图书
+            </div>
+
+            <div v-else class="book-grid">
+                <div class="book-card" v-for="book in books" :key="book.bookId">
+                    <div class="book-title">{{ book.bookName }}</div>
+                    <div class="book-author">作者：{{ book.author }}</div>
+                    <div class="book-info">ISBN：{{ book.isbn }}</div>
+                    <div class="book-info">分类：{{ book.category }}</div>
+                    <div class="book-info">分馆：{{ getBranchName(book.branchId) }}</div>
+                    <div class="book-info">类型：{{ book.bookType === 'book' ? '图书' : '杂志' }}</div>
+
+                    <div class="book-status">
+                        <div>总数量：{{ book.totalNum }}</div>
+                        <div>可借数量：{{ book.availableNum }}</div>
+                        <div :class="{
+                                'status-available': book.availableNum > 0,
+                                'status-unavailable': book.availableNum === 0
+                            }">
+                            状态：{{ book.availableNum > 0 ? '可借阅' : '暂不可借' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="!loading && books.length > 0" class="pagination">
+                <button
+                        v-for="page in totalPages"
+                        :key="page"
+                        :class="{ active: currentPage === page }"
+                        @click="goToPage(page)"
+                >
+                    {{ page }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, reactive, computed, onMounted } = Vue;
+
+    createApp({
+        setup() {
+            // 搜索表单
+            const searchForm = reactive({
+                keyword: '',
+                category: '',
+                branchId: '',
+                bookType: '',
+                status: ''
+            });
+
+            // 分页信息
+            const currentPage = ref(1);
+            const pageSize = ref(12);
+            const total = ref(0);
+            const loading = ref(false);
+
+            // 图书数据
+            const books = ref([]);
+
+            // 分馆名称映射
+            const branchMap = {
+                1: '校本部',
+                2: '黄塘校区',
+                3: '程江校区',
+                4: '江南校区',
+                5: '丰顺校区'
+            };
+
+            // 总页数计算
+            const totalPages = computed(() => {
+                return Math.ceil(total.value / pageSize.value);
+            });
+
+            // 获取分馆名称
+            const getBranchName = (branchId) => {
+                return branchMap[branchId] || '未知分馆';
+            };
+
+            // 搜索图书
+            const searchBooks = async () => {
+                loading.value = true;
+
+                try {
+                    // 模拟API调用 - 在实际项目中替换为真实的API请求
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    // 模拟数据
+                    const mockData = generateMockData();
+                    books.value = mockData.slice(
+                        (currentPage.value - 1) * pageSize.value,
+                        currentPage.value * pageSize.value
+                    );
+                    total.value = mockData.length;
+                } catch (error) {
+                    console.error('搜索失败:', error);
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            // 生成模拟数据
+            const generateMockData = () => {
+                const categories = ['计算机', '文学', '历史', '科学', '艺术', '经济'];
+                const authors = [
+                    '张三', '李四', '王五', '赵六', '钱七', '孙八',
+                    '周九', '吴十', '郑一', '王二', '李三', '张四'
+                ];
+                const bookTypes = ['book', 'magazine'];
+
+                let results = [];
+                for (let i = 1; i <= 50; i++) {
+                    const book = {
+                        bookId: i,
+                        bookName: `《${categories[Math.floor(Math.random() * categories.length)]}书籍${i}》`,
+                        author: authors[Math.floor(Math.random() * authors.length)],
+                        isbn: `978-${Math.floor(Math.random() * 999)}-${Math.floor(Math.random() * 999)}-${Math.floor(Math.random() * 999)}-${Math.floor(Math.random() * 99)}${Math.floor(Math.random() * 9)}`,
+                        category: categories[Math.floor(Math.random() * categories.length)],
+                        branchId: Math.floor(Math.random() * 5) + 1,
+                        bookType: bookTypes[Math.floor(Math.random() * bookTypes.length)],
+                        totalNum: Math.floor(Math.random() * 10) + 1,
+                        availableNum: Math.floor(Math.random() * 5),
+                        status: Math.random() > 0.5 ? 'normal' : 'out_of_stock'
+                    };
+
+                    // 根据搜索条件过滤
+                    if (searchForm.keyword &&
+                        !book.bookName.toLowerCase().includes(searchForm.keyword.toLowerCase()) &&
+                        !book.author.toLowerCase().includes(searchForm.keyword.toLowerCase()) &&
+                        !book.isbn.includes(searchForm.keyword)) {
+                        continue;
+                    }
+
+                    if (searchForm.category && book.category !== searchForm.category) {
+                        continue;
+                    }
+
+                    if (searchForm.branchId && book.branchId != searchForm.branchId) {
+                        continue;
+                    }
+
+                    if (searchForm.bookType && book.bookType !== searchForm.bookType) {
+                        continue;
+                    }
+
+                    if (searchForm.status) {
+                        if (searchForm.status === 'available' && book.availableNum === 0) {
+                            continue;
+                        }
+                        if (searchForm.status === 'unavailable' && book.availableNum > 0) {
+                            continue;
+                        }
+                    }
+
+                    results.push(book);
+                }
+
+                return results;
+            };
+
+            // 跳转到指定页
+            const goToPage = (page) => {
+                currentPage.value = page;
+                searchBooks();
+            };
+
+            // 初始化数据
+            onMounted(() => {
+                searchBooks();
+            });
+
+            return {
+                searchForm,
+                currentPage,
+                total,
+                loading,
+                books,
+                totalPages,
+                getBranchName,
+                searchBooks,
+                goToPage
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
