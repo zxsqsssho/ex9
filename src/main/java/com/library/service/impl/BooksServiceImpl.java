@@ -1,42 +1,106 @@
-//src/main/java/com/library/service/impl/BooksServiceImpl.java
+// BooksServiceImpl.java
 package com.library.service.impl;
 
+import com.library.dto.BookCreateDTO;
+import com.library.dto.BookUpdateDTO;
 import com.library.entity.Books;
 import com.library.repository.BooksRepository;
 import com.library.service.BooksService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
+@RequiredArgsConstructor
 public class BooksServiceImpl implements BooksService {
-
-    // 注入JPA的Repository，替换原来的MyBatis Mapper
-    @Autowired
-    private BooksRepository booksRepository;
+    private final BooksRepository booksRepository;
 
     @Override
     public Page<Books> findAll(Pageable pageable) {
-        // 调用JPA Repository自带的分页方法
         return booksRepository.findAll(pageable);
     }
 
     @Override
     public Books findById(Long id) {
-        // 调用JPA Repository的查询方法，返回Optional，避免空指针
-        return booksRepository.findById(id).orElse(null);
+        return booksRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("图书不存在"));
     }
 
     @Override
-    public Books save(Books books) {
-        // 调用JPA Repository的保存方法（新增/修改通用）
-        return booksRepository.save(books);
+    @Transactional
+    public Books save(BookCreateDTO bookDTO) {
+        Books book = new Books();
+        book.setBookName(bookDTO.getBookName());
+        book.setAuthor(bookDTO.getAuthor());
+        book.setIsbn(bookDTO.getIsbn());
+        book.setCategory(bookDTO.getCategory());
+        book.setBranchId(bookDTO.getBranchId());
+        book.setBookType(bookDTO.getBookType());
+        book.setTotalNum(bookDTO.getTotalNum());
+        book.setAvailableNum(bookDTO.getAvailableNum());
+        book.setStatus(bookDTO.getAvailableNum() > 0 ? "normal" : "out_of_stock");
+        book.setCreateTime(LocalDateTime.now());
+        return booksRepository.save(book);
     }
 
     @Override
+    @Transactional
+    public Books update(Long id, BookUpdateDTO bookDTO) {
+        Books book = findById(id);
+        if (bookDTO.getBookName() != null) {
+            book.setBookName(bookDTO.getBookName());
+        }
+        if (bookDTO.getAuthor() != null) {
+            book.setAuthor(bookDTO.getAuthor());
+        }
+        if (bookDTO.getCategory() != null) {
+            book.setCategory(bookDTO.getCategory());
+        }
+        if (bookDTO.getBookType() != null) {
+            book.setBookType(bookDTO.getBookType());
+        }
+        if (bookDTO.getTotalNum() != null) {
+            book.setTotalNum(bookDTO.getTotalNum());
+        }
+        if (bookDTO.getAvailableNum() != null) {
+            book.setAvailableNum(bookDTO.getAvailableNum());
+        }
+        if (bookDTO.getStatus() != null) {
+            book.setStatus(bookDTO.getStatus());
+        }
+        return booksRepository.save(book);
+    }
+
+    @Override
+    @Transactional
     public void deleteById(Long id) {
-        // 调用JPA Repository的删除方法
         booksRepository.deleteById(id);
+    }
+
+    @Override
+    public Page<Books> findBooks(Integer branchId, String bookName, String author, Pageable pageable) {
+        if (branchId != null && bookName != null && author != null) {
+            return booksRepository.findByBranchIdAndBookNameLikeAndAuthorLike(
+                    branchId, "%" + bookName + "%", "%" + author + "%", pageable);
+        } else if (branchId != null && bookName != null) {
+            return booksRepository.findByBranchIdAndBookNameLike(branchId, "%" + bookName + "%", pageable);
+        } else if (branchId != null && author != null) {
+            return booksRepository.findByBranchIdAndAuthorLike(branchId, "%" + author + "%", pageable);
+        } else if (bookName != null && author != null) {
+            return booksRepository.findByBookNameLikeAndAuthorLike("%" + bookName + "%", "%" + author + "%", pageable);
+        } else if (branchId != null) {
+            return booksRepository.findByBranchId(branchId, pageable);
+        } else if (bookName != null) {
+            return booksRepository.findByBookNameLike("%" + bookName + "%", pageable);
+        } else if (author != null) {
+            return booksRepository.findByAuthorLike("%" + author + "%", pageable);
+        } else {
+            return booksRepository.findAll(pageable);
+        }
     }
 }

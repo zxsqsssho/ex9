@@ -1,15 +1,16 @@
-//src/main/java/com/library/service/BooksService.java
 package com.library.service;
 
+import com.library.dto.BookCreateDTO;
+import com.library.dto.BookUpdateDTO;
 import com.library.entity.Books;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-
 public interface BooksService {
-    // 移除MyBatis-Plus的Page，替换为JPA的Page
-    Page<Books> findAll(Pageable pageable); // 分页查询所有
-    Books findById(Long id); // 根据主键查询
-    Books save(Books books); // 新增/修改
-    void deleteById(Long id); // 根据主键删除
+    Page<Books> findAll(Pageable pageable);
+    Books findById(Long id);
+    Books save(BookCreateDTO bookDTO);
+    Books update(Long id, BookUpdateDTO bookDTO);
+    void deleteById(Long id);
+    Page<Books> findBooks(Integer branchId, String bookName, String author, Pageable pageable);
 }

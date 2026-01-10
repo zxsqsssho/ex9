@@ -1,15 +1,23 @@
+// BooksRepository.java
 package com.library.repository;
 
 import com.library.entity.Books;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-// JPA的Repository接口，继承JpaRepository<实体类, 主键类型>，自带CRUD方法
 @Repository
 public interface BooksRepository extends JpaRepository<Books, Long> {
-    // 自定义查询方法（JPA支持方法名自动生成SQL，无需写XML/注解）
-    // 示例：根据书名模糊查询
     List<Books> findByBookNameLike(String bookName);
+    Page<Books> findByBranchId(Integer branchId, Pageable pageable);
+    Page<Books> findByBookNameLike(String bookName, Pageable pageable);
+    Page<Books> findByAuthorLike(String author, Pageable pageable);
+    Page<Books> findByBranchIdAndBookNameLike(Integer branchId, String bookName, Pageable pageable);
+    Page<Books> findByBranchIdAndAuthorLike(Integer branchId, String author, Pageable pageable);
+    Page<Books> findByBookNameLikeAndAuthorLike(String bookName, String author, Pageable pageable);
+    Page<Books> findByBranchIdAndBookNameLikeAndAuthorLike(Integer branchId, String bookName, String author, Pageable pageable);
+    boolean existsByIsbn(String isbn);
 }
