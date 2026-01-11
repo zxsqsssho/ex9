@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
  * 所有接口都需要认证，具体权限见每个方法的注解
  */
 @RestController
-@RequestMapping("/api/manage_users")
+@RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -53,7 +53,7 @@ public class UserController {
      * 说明：分馆管理员无此权限
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
     public ApiResponse<?> deleteUser(@PathVariable Long id) {
         return userService.deleteUser(id);
     }
@@ -116,12 +116,12 @@ public class UserController {
 
     /**
      * 修改用户状态
-     * 访问权限：系统管理员(SYSTEM_ADMIN)
-     * 说明：分馆管理员无此权限
+     * 访问权限：系统管理员(SYSTEM_ADMIN) 或 分馆管理员(BRANCH_ADMIN)
+     * 说明：分馆管理员只能修改本分馆的用户
      * @param status 状态：ACTIVE, INACTIVE, LOCKED, DELETED
      */
     @PatchMapping("/{id}/status/{status}")  // 修改这里
-    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
     public ApiResponse<?> changeUserStatus(@PathVariable Long id,
                                            @PathVariable String status) {  // 修改这里
         return userService.changeUserStatus(id, status);
@@ -130,20 +130,20 @@ public class UserController {
     /**
      * 重置用户密码
      * 访问权限：系统管理员(SYSTEM_ADMIN)
-     * 说明：分馆管理员无此权限
+     * 说明：分馆管理员只能修改本分馆的用户
      */
     @PostMapping("/{id}/reset-password")
-    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
     public ApiResponse<?> resetPassword(@PathVariable Long id) {
         return userService.resetPassword(id);
     }
 
     /**
      * 获取指定分馆的用户列表
-     * 访问权限：系统管理员(SYSTEM_ADMIN)
+     * 访问权限：系统管理员(SYSTEM_ADMIN) 或 分馆管理员(BRANCH_ADMIN)
      * 说明：分馆管理员无此权限
      */
-    @GetMapping("/branch/{branchId}")
+    @GetMapping("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ApiResponse<?> getUsersByBranch(
             @PathVariable Integer branchId,

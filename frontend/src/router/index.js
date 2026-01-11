@@ -1,46 +1,65 @@
+// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 
 // 懒加载路由组件
 const Login = () => import('@/views/Login.vue')
+const Register = () => import('@/views/Register.vue')
 const Home = () => import('@/views/Home.vue')
 
-// 人员A：图书查询模块
 const BookQuery = () => import('@/views/book/BookQuery.vue')
 const BookDetail = () => import('@/views/book/BookDetail.vue')
 
-// 人员B：用户/权限/通知模块
 const UserManagement = () => import('@/views/user/UserManagement.vue')
-const NotificationManagement = () => import('@/views/notification/NotificationManagement.vue')
-
-// 人员C：图书/借阅管理模块
-const BookManagement = () => import('@/views/admin/BookManagement.vue')
-const BorrowManagement = () => import('@/views/admin/BorrowManagement.vue')
-
 const MySpace = () => import('@/views/user/MySpace.vue')
-
 const MyReservations = () => import('@/views/user/MyReservations.vue')
 const MyFines = () => import('@/views/user/MyFines.vue')
+
+const NotificationManagement = () => import('@/views/notification/NotificationManagement.vue')
+
+const BookManagement = () => import('@/views/admin/BookManagement.vue')
+const BorrowManagement = () => import('@/views/admin/BorrowManagement.vue')
 
 
 const routes = [
     {
         path: '/',
-        redirect: '/home' // ⭐ 不再根据 token 判断
+        redirect: '/login'
     },
-    { path: '/login', component: Login, name: 'Login' },
+    {
+        path: '/login',
+        component: Login,
+        name: 'Login',
+        meta: { title: '登录' }
+    },
+    {
+        path: '/register',
+        component: Register,
+        name: 'Register',
+        meta: { title: '注册' }
+    },
     {
         path: '/home',
         component: Home,
         name: 'Home',
         meta: { requiresAuth: true },
         children: [
-            // 公共模块（人员A）
-            { path: 'book-query', component: BookQuery, name: 'BookQuery', meta: { title: '图书查询' } },
-            { path: 'book-detail/:id', component: BookDetail, name: 'BookDetail', meta: { title: '图书详情' } },
+            // 公共模块
+            {
+                path: 'book-query',
+                component: BookQuery,
+                name: 'BookQuery',
+                meta: { title: '图书查询' }
+            },
+            {
+                path: 'book-detail/:id',
+                component: BookDetail,
+                name: 'BookDetail',
+                meta: { title: '图书详情' }
+            },
 
-            // 管理员模块（人员B）
+            // 管理员模块
             {
                 path: 'user-management',
                 component: UserManagement,
@@ -59,8 +78,6 @@ const routes = [
                     requireRole: ['ROLE_SYSTEM_ADMIN']
                 }
             },
-
-            // 管理员模块（人员C）
             {
                 path: 'book-management',
                 component: BookManagement,
@@ -81,13 +98,24 @@ const routes = [
             },
 
             // 普通用户模块
-            { path: 'my-space', component: MySpace, name: 'MySpace', meta: { title: '我的空间' } },
-            { path: 'my-reservations', component: MyReservations, name: 'MyReservations', meta: { title: '我的预定记录' } },
-            { path: 'my-fines', component: MyFines, name: 'MyFines', meta: { title: '我的罚款记录' } },
-
-
-
-
+            {
+                path: 'my-space',
+                component: MySpace,
+                name: 'MySpace',
+                meta: { title: '我的空间' }
+            },
+            {
+                path: 'my-reservations',
+                component: MyReservations,
+                name: 'MyReservations',
+                meta: { title: '我的预定记录' }
+            },
+            {
+                path: 'my-fines',
+                component: MyFines,
+                name: 'MyFines',
+                meta: { title: '我的罚款记录' }
+            },
         ]
     }
 ]
@@ -97,39 +125,51 @@ const router = createRouter({
     routes
 })
 
-/**
- * ⭐ 全局路由守卫（核心）
- * - 不再使用 token
- * - 使用 current-user 接口确认是否登录
- */
+// 全局路由守卫
 router.beforeEach(async (to, from, next) => {
     const userStore = useUserStore()
 
-    // 访问登录页，直接放行
-    if (to.path === '/login') {
+    // 设置页面标题
+    if (to.meta.title) {
+        document.title = `${to.meta.title} - 图书馆管理系统`
+    }
+
+    // 公开页面直接放行
+    if (to.path === '/login' || to.path === '/register') {
         next()
         return
     }
 
-    // 需要登录的页面
+    // 检查是否需要认证
     if (to.meta.requiresAuth) {
-        // 本地没有用户信息 → 向后端确认会话
+        // 检查是否有Basic Auth凭据
+        const authString = localStorage.getItem('basic_auth')
+
+        if (!authString) {
+            ElMessage.warning('请先登录')
+            next('/login')
+            return
+        }
+
+        // 如果用户信息不存在，尝试获取
         if (!userStore.userInfo) {
             try {
                 await userStore.fetchCurrentUser()
-            } catch (e) {
-                ElMessage.warning('请先登录')
+            } catch (error) {
+                // 如果获取失败，清除认证信息并跳转到登录页
+                userStore.logout()
+                ElMessage.warning('登录已过期，请重新登录')
                 next('/login')
                 return
             }
         }
 
-        // ⭐ 角色校验
+        // 检查角色权限
         const requireRole = to.meta.requireRole
         if (requireRole && requireRole.length > 0) {
             if (!requireRole.includes(userStore.role)) {
                 ElMessage.error('无权限访问该页面')
-                next('/home')
+                next('/home/book-query') // 跳转到有权限的页面
                 return
             }
         }

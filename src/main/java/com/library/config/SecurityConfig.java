@@ -56,7 +56,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:8081", // ✅ 前端 dev
-                "http://localhost:8080"  // 如有需要
+                "http://localhost:8080",  // 如有需要
+                "http://localhost:8082"  // 如有需要
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
@@ -105,8 +106,8 @@ public class SecurityConfig {
                         // 默认：所有其他请求都需要认证
                         .anyRequest().authenticated()
                 )
-                .authenticationProvider(authenticationProvider());
-//                .httpBasic(httpBasic -> {});
+                .authenticationProvider(authenticationProvider())
+                .httpBasic(httpBasic -> {});
 
         return http.build();
     }

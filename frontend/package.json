@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "vue-cli-service serve",
+    "dev": "vue-cli-service serve --no-deprecation",
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build"
+    "build": "vue-cli-service build",
+    "start": "vue-cli-service serve --no-deprecation --no-warnings"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
     "axios": "^1.6.5",
     "element-plus": "^2.4.4",
+    "install": "^0.13.0",
     "pinia": "^2.1.7",
     "vite": "^7.3.1",
     "vue": "^3.3.13",

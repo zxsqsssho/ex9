@@ -91,6 +91,10 @@ public class UserServiceImpl implements UserService {
                 return ApiResponse.error(403, "无权修改该用户");
             }
 
+            // 记录原始值，用于检查是否有修改
+            User.UserType originalUserType = user.getUserType();
+            Integer originalBranchId = user.getBranchId();
+
             // 更新用户信息（只更新非空字段）
             if (userDTO.getRealName() != null) {
                 user.setRealName(userDTO.getRealName());
@@ -106,25 +110,58 @@ public class UserServiceImpl implements UserService {
             if (userDTO.getPhone() != null) {
                 user.setPhone(userDTO.getPhone());
             }
-            if (userDTO.getUserType() != null && authService.isSystemAdmin()) {
-                // 只有系统管理员可以修改用户类型
-                user.setUserType(userDTO.getUserType());
+
+            // 检查用户类型修改权限
+            if (userDTO.getUserType() != null) {
+                // 检查是否实际修改了用户类型
+                if (!originalUserType.equals(userDTO.getUserType())) {
+                    // 只有系统管理员可以修改用户类型
+                    if (!authService.isSystemAdmin()) {
+                        return ApiResponse.error(403, "分馆管理员无权修改用户类型");
+                    }
+                    user.setUserType(userDTO.getUserType());
+                }
             }
-            if (userDTO.getBranchId() != null && authService.isSystemAdmin()) {
-                // 只有系统管理员可以修改分馆ID
-                user.setBranchId(userDTO.getBranchId());
+
+            // 检查分馆ID修改权限
+            if (userDTO.getBranchId() != null) {
+                // 检查是否实际修改了分馆ID
+                if (!originalBranchId.equals(userDTO.getBranchId())) {
+                    // 只有系统管理员可以修改分馆ID
+                    if (!authService.isSystemAdmin()) {
+                        return ApiResponse.error(403, "分馆管理员无权修改分馆ID");
+                    }
+                    user.setBranchId(userDTO.getBranchId());
+                }
             }
-            if (userDTO.getStatus() != null && authService.isSystemAdmin()) {
-                // 只有系统管理员可以修改状态
+
+            // 检查状态修改权限
+            if (userDTO.getStatus() != null && authService.canModifyUser(id)) {
+                // 检查分馆管理员不能修改状态为DELETED
+                if (authService.isBranchAdmin() &&
+                        userDTO.getStatus() == User.UserStatus.DELETED) {
+                    return ApiResponse.error(403, "分馆管理员不能删除用户");
+                }
                 user.setStatus(userDTO.getStatus());
             }
+
+            // 检查角色ID修改权限
             if (userDTO.getRoleId() != null) {
+                // 只有系统管理员可以修改角色
+                if (!authService.isSystemAdmin()) {
+                    return ApiResponse.error(403, "分馆管理员无权修改用户角色");
+                }
                 Role role = roleRepository.findById(userDTO.getRoleId())
                         .orElseThrow(() -> new EntityNotFoundException("角色不存在"));
                 user.setRole(role);
             }
-            if (userDTO.getPassword() != null && authService.isSystemAdmin()) {
+
+            // 检查密码修改权限
+            if (userDTO.getPassword() != null) {
                 // 只有系统管理员可以重置密码
+                if (!authService.isSystemAdmin()) {
+                    return ApiResponse.error(403, "分馆管理员无权重置密码");
+                }
                 user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
             }
 
@@ -132,6 +169,53 @@ public class UserServiceImpl implements UserService {
             return ApiResponse.success("用户更新成功", convertToResponseDTO(updatedUser));
         } catch (Exception e) {
             return ApiResponse.error(500, "更新用户失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public ApiResponse<?> changeUserStatus(Long id, String status) {
+        try {
+            User user = userRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("用户不存在"));
+
+            // 检查权限（系统管理员和分馆管理员可以修改状态）
+            if (!authService.canModifyUser(id)) {
+                return ApiResponse.error(403, "无权修改用户状态");
+            }
+
+            // 检查分馆管理员不能将用户状态改为DELETED
+            User.UserStatus newStatus = User.UserStatus.valueOf(status.toUpperCase());
+            if (authService.isBranchAdmin() && newStatus == User.UserStatus.DELETED) {
+                return ApiResponse.error(403, "分馆管理员不能删除用户");
+            }
+
+            user.setStatus(newStatus);
+            userRepository.save(user);
+            return ApiResponse.success("用户状态更新成功", convertToResponseDTO(user));
+        } catch (Exception e) {
+            return ApiResponse.error(500, "更新用户状态失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public ApiResponse<?> resetPassword(Long id) {
+        try {
+            User user = userRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("用户不存在"));
+
+            // 检查权限（系统管理员和分馆管理员可以重置密码）
+            if (!authService.canModifyUser(id)) {
+                return ApiResponse.error(403, "无权重置密码");
+            }
+
+            // 重置为默认密码
+            user.setPassword(passwordEncoder.encode("123456"));
+            userRepository.save(user);
+            return ApiResponse.success("密码重置成功");
+        } catch (Exception e) {
+            return ApiResponse.error(500, "重置密码失败: " + e.getMessage());
         }
     }
 
@@ -270,28 +354,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
-    public ApiResponse<?> changeUserStatus(Long id, String status) {
-        try {
-            User user = userRepository.findById(id)
-                    .orElseThrow(() -> new EntityNotFoundException("用户不存在"));
-
-            // 检查权限（只有系统管理员可以修改状态）
-            if (!authService.isSystemAdmin()) {
-                return ApiResponse.error(403, "无权修改用户状态");
-            }
-
-            User.UserStatus newStatus = User.UserStatus.valueOf(status.toUpperCase());
-            user.setStatus(newStatus);
-            userRepository.save(user);
-
-            return ApiResponse.success("用户状态更新成功", convertToResponseDTO(user));
-        } catch (Exception e) {
-            return ApiResponse.error(500, "更新用户状态失败: " + e.getMessage());
-        }
-    }
-
-    @Override
     public ApiResponse<?> getUsersByBranch(Integer branchId, Pageable pageable) {
         try {
             // 只有系统管理员可以查询所有分馆的用户
@@ -314,28 +376,6 @@ public class UserServiceImpl implements UserService {
             ));
         } catch (Exception e) {
             return ApiResponse.error(500, "获取分馆用户失败: " + e.getMessage());
-        }
-    }
-
-    @Override
-    @Transactional
-    public ApiResponse<?> resetPassword(Long id) {
-        try {
-            User user = userRepository.findById(id)
-                    .orElseThrow(() -> new EntityNotFoundException("用户不存在"));
-
-            // 检查权限（只有系统管理员可以重置密码）
-            if (!authService.isSystemAdmin()) {
-                return ApiResponse.error(403, "无权重置密码");
-            }
-
-            // 重置为默认密码
-            user.setPassword(passwordEncoder.encode("123456"));
-            userRepository.save(user);
-
-            return ApiResponse.success("密码重置成功");
-        } catch (Exception e) {
-            return ApiResponse.error(500, "重置密码失败: " + e.getMessage());
         }
     }
 

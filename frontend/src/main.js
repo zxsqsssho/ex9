@@ -10,7 +10,20 @@ import router from './router'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 
-
+// 在文件最开头添加
+const originalError = console.error
+console.error = function(...args) {
+    if (args[0] && typeof args[0] === 'string') {
+        const msg = args[0]
+        if (msg.includes('ResizeObserver') ||
+            msg.includes('lang attribute') ||
+            msg.includes('Form elements must have labels') ||
+            msg.includes('type.text is about to be deprecated')) {
+            return
+        }
+    }
+    originalError.apply(console, args)
+}
 const pinia = createPinia()
 
 const app = createApp(App)
@@ -22,4 +35,3 @@ app.use(router)
 // 挂载Element Plus（可选）
 app.use(ElementPlus)
 app.mount('#app')
-
