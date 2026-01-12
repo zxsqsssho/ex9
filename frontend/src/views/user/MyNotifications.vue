@@ -1,5 +1,4 @@
 <!-- src/views/user/MyNotifications.vue -->
-
 <template>
   <div class="my-notifications">
     <el-card class="box-card">

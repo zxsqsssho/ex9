@@ -29,13 +29,6 @@ service.interceptors.request.use(
         if (authHeader) {
             config.headers.Authorization = authHeader
         }
-
-        // 如果是登录/注册请求，使用特殊处理
-        // if (config.url.includes('/auth/login') || config.url.includes('/auth/register')) {
-        //     // 这些请求不需要Basic Auth头，而是需要在请求体中包含认证信息
-        //     delete config.headers.Authorization
-        // }
-
         return config
     },
     error => {
