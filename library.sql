@@ -85,20 +85,20 @@ INSERT INTO `branches` VALUES (5, '丰顺', '', '2026-01-09 00:37:27');
 -- ----------------------------
 -- Table structure for email_notifications
 -- ----------------------------
-DROP TABLE IF EXISTS `email_notifications`;
-CREATE TABLE `email_notifications`  (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `content` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `create_time` datetime(6) NOT NULL,
-  `email` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `error_message` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `send_time` datetime(6) NULL DEFAULT NULL,
-  `status` enum('FAILED','PENDING','SENT') CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `subject` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `type` enum('OVERDUE_REMINDER','RESERVATION_AVAILABLE','RESERVATION_EXPIRY','RESERVATION_NOTIFY_LENDER') CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `user_id` bigint(20) NOT NULL,
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+-- DROP TABLE IF EXISTS `email_notifications`;
+-- CREATE TABLE `email_notifications`  (
+--   `id` bigint(20) NOT NULL AUTO_INCREMENT,
+--   `content` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+--   `create_time` datetime(6) NOT NULL,
+--   `email` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+--   `error_message` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+--   `send_time` datetime(6) NULL DEFAULT NULL,
+--   `status` enum('FAILED','PENDING','SENT') CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+--   `subject` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+--   `type` enum('OVERDUE_REMINDER','RESERVATION_AVAILABLE','RESERVATION_EXPIRY','RESERVATION_NOTIFY_LENDER') CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+--   `user_id` bigint(20) NOT NULL,
+--   PRIMARY KEY (`id`) USING BTREE
+-- ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for fines
@@ -247,11 +247,11 @@ BEGIN
     DECLARE dueTime DATETIME(6);
     DECLARE returnTime DATETIME(6);
     DECLARE overdueDays INT;
-    
+
     -- 获取借阅记录的应还时间和实际还书时间
-    SELECT due_time, return_time INTO dueTime, returnTime 
+    SELECT due_time, return_time INTO dueTime, returnTime
     FROM borrow_records WHERE id = recordId;
-    
+
     -- 计算逾期天数（还书时间>应还时间才计算）
     IF returnTime > dueTime THEN
         SET overdueDays = DATEDIFF(returnTime, dueTime);
@@ -259,7 +259,7 @@ BEGIN
     ELSE
         SET fineAmount = 0.00;
     END IF;
-    
+
     -- 插入/更新罚款记录
     INSERT INTO fines (record_id, fine_amount, pay_status)
     VALUES (recordId, fineAmount, 'unpaid')
@@ -284,3 +284,52 @@ END
 delimiter ;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+
+-- ----------------------------
+-- Table structure for notifications
+-- ----------------------------
+DROP TABLE IF EXISTS `notifications`;
+CREATE TABLE `notifications`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL COMMENT '接收用户ID',
+  `title` varchar(200) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '标题',
+  `content` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL COMMENT '内容',
+  `type` enum('RESERVATION_AVAILABLE','RESERVATION_REMINDER','OVERDUE_REMINDER','SYSTEM_NOTIFICATION') CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '通知类型',
+  `is_read` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已读',
+  `important` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否重要',
+  `created_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_user_id`(`user_id`) USING BTREE,
+  INDEX `idx_user_read`(`user_id`, `is_read`) USING BTREE,
+  CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '通知信息表' ROW_FORMAT = Dynamic;
+
+
+
+INSERT INTO `books` VALUES (1, 'Java编程思想', 'Bruce Eckel', '9787111213826', '计算机', 1, '技术书籍', 10, 8, 'AVAILABLE', CURRENT_TIMESTAMP);
+INSERT INTO `books` VALUES (2, '红楼梦', '曹雪芹', '9787020002207', '文学', 1, '古典文学', 5, 3, 'AVAILABLE', CURRENT_TIMESTAMP);
+INSERT INTO `books` VALUES (3, '数学分析', '华东师范大学', '9787040372887', '数学', 2, '教材', 15, 12, 'AVAILABLE', CURRENT_TIMESTAMP);
+INSERT INTO `books` VALUES (4, '英语四级词汇', '新东方', '9787553680709', '外语', 3, '教辅', 20, 18, 'AVAILABLE', CURRENT_TIMESTAMP);
+INSERT INTO `books` VALUES (5, '人工智能导论', '李开复', '9787302457810', '计算机', 4, '技术书籍', 8, 5, 'AVAILABLE', CURRENT_TIMESTAMP);
+
+INSERT INTO `borrow_records` VALUES (1, 1, '2026-01-01 10:00:00.000000', 1, '2026-02-01 10:00:00.000000', NULL, NULL, NULL, 'BORROWED', 10);
+INSERT INTO `borrow_records` VALUES (2, 2, '2026-01-02 14:30:00.000000', 2, '2026-02-02 14:30:00.000000', NULL, NULL, NULL, 'BORROWED', 11);
+INSERT INTO `borrow_records` VALUES (3, 3, '2026-01-03 09:15:00.000000', 3, '2026-02-03 09:15:00.000000', NULL, NULL, NULL, 'RETURNED', 12);
+INSERT INTO `borrow_records` VALUES (4, 4, '2026-01-10 11:20:00.000000', 4, '2026-01-25 11:20:00.000000', NULL, NULL, NULL, 'OVERDUE', 13);
+INSERT INTO `borrow_records` VALUES (5, 5, '2026-01-05 16:45:00.000000', 5, '2026-02-05 16:45:00.000000', NULL, NULL, NULL, 'BORROWED', 14);
+
+INSERT INTO `fines` VALUES (1, 4, 5.00, 'unpaid', NULL);
+INSERT INTO `fines` VALUES (2, 3, 0.00, 'paid', NULL);
+
+INSERT INTO `reservations` VALUES (1, 1, 1, '2026-01-15 09:00:00.000000', '2026-01-08 09:00:00.000000', 'PENDING', 11);
+INSERT INTO `reservations` VALUES (2, 2, 2, '2026-01-16 14:00:00.000000', '2026-01-09 14:00:00.000000', 'READY', 12);
+INSERT INTO `reservations` VALUES (3, 3, 3, '2026-01-14 10:30:00.000000', '2026-01-07 10:30:00.000000', 'COMPLETED', 13);
+INSERT INTO `reservations` VALUES (4, 4, 4, '2026-01-13 16:20:00.000000', '2026-01-06 16:20:00.000000', 'CANCELLED', 14);
+INSERT INTO `reservations` VALUES (5, 5, 5, '2026-01-17 11:00:00.000000', '2026-01-10 11:00:00.000000', 'PENDING', 10);
+
+INSERT INTO `notifications` VALUES (1, 10, '图书可借通知', '您预约的《Java编程思想》现已可借阅，请在三日内到图书馆办理借阅手续。', 'RESERVATION_AVAILABLE', 0, 1, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (2, 11, '逾期提醒', '您借阅的《红楼梦》已逾期2天，请尽快归还。', 'OVERDUE_REMINDER', 0, 1, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (3, 12, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (4, 13, '预约提醒', '您预约的图书将在24小时后过期，请及时处理。', 'RESERVATION_REMINDER', 0, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (5, 14, '罚款通知', '您有未支付的逾期罚款，请及时缴纳。', 'SYSTEM_NOTIFICATION', 0, 1, CURRENT_TIMESTAMP);

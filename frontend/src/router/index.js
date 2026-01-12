@@ -1,4 +1,5 @@
 // src/router/index.js
+
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
@@ -7,25 +8,24 @@ import { ElMessage } from 'element-plus'
 const Login = () => import('@/views/Login.vue')
 const Register = () => import('@/views/Register.vue')
 const Home = () => import('@/views/Home.vue')
-
 const BookQuery = () => import('@/views/book/BookQuery.vue')
 const BookDetail = () => import('@/views/book/BookDetail.vue')
-
 const UserManagement = () => import('@/views/user/UserManagement.vue')
-const MySpace = () => import('@/views/user/MySpace.vue')
-const MyReservations = () => import('@/views/user/MyReservations.vue')
-const MyFines = () => import('@/views/user/MyFines.vue')
+
+// 拆分的独立页面
+const BorrowRecords = () => import('@/views/user/BorrowRecords.vue')
+const Reservations = () => import('@/views/user/MyReservations.vue')
+const Fines = () => import('@/views/user/MyFines.vue')
+const UserNotifications = () => import('@/views/user/MyNotifications.vue')
 
 const NotificationManagement = () => import('@/views/notification/NotificationManagement.vue')
-
 const BookManagement = () => import('@/views/admin/BookManagement.vue')
 const BorrowManagement = () => import('@/views/admin/BorrowManagement.vue')
-
 
 const routes = [
     {
         path: '/',
-        redirect: '/login'
+        redirect: '/home/my-notifications'
     },
     {
         path: '/login',
@@ -97,25 +97,31 @@ const routes = [
                 }
             },
 
-            // 普通用户模块
+            // 用户个人中心 - 拆分为独立页面
             {
-                path: 'my-space',
-                component: MySpace,
-                name: 'MySpace',
-                meta: { title: '我的空间' }
+                path: 'borrow-records',
+                component: BorrowRecords,
+                name: 'BorrowRecords',
+                meta: { title: '借阅记录' }
             },
             {
                 path: 'my-reservations',
-                component: MyReservations,
+                component: Reservations,
                 name: 'MyReservations',
-                meta: { title: '我的预定记录' }
+                meta: { title: '预定记录' }
             },
             {
                 path: 'my-fines',
-                component: MyFines,
+                component: Fines,
                 name: 'MyFines',
-                meta: { title: '我的罚款记录' }
+                meta: { title: '罚款记录' }
             },
+            {
+                path: 'my-notifications',
+                component: UserNotifications,
+                name: 'MyNotifications',
+                meta: { title: '我的通知' }
+            }
         ]
     }
 ]
@@ -144,7 +150,6 @@ router.beforeEach(async (to, from, next) => {
     if (to.meta.requiresAuth) {
         // 检查是否有Basic Auth凭据
         const authString = localStorage.getItem('basic_auth')
-
         if (!authString) {
             ElMessage.warning('请先登录')
             next('/login')
@@ -169,12 +174,11 @@ router.beforeEach(async (to, from, next) => {
         if (requireRole && requireRole.length > 0) {
             if (!requireRole.includes(userStore.role)) {
                 ElMessage.error('无权限访问该页面')
-                next('/home/book-query') // 跳转到有权限的页面
+                next('/home')
                 return
             }
         }
     }
-
     next()
 })
 
