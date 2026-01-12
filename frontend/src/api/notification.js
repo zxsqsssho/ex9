@@ -1,50 +1,37 @@
+// src/api/notification.js
 import request from '@/utils/request'
 
-// 获取通知列表
-export function getNotifications(params) {
-    return request({
-        url: '/api/notifications',
-        method: 'get',
-        params
-    })
+// 获取用户通知列表
+export function getMyNotifications(params) {
+    return request.get('/notifications/user', { params })
 }
 
-// 获取通知详情
-export function getNotificationDetail(id) {
-    return request({
-        url: `/api/notifications/${id}`,
-        method: 'get'
-    })
+// 获取未读通知数量
+export function getUnreadCount() {
+    return request.get('/notifications/unread-count')
 }
 
-// 重试发送通知
-export function retryNotification(id) {
-    return request({
-        url: `/api/notifications/${id}/retry`,
-        method: 'post'
-    })
+// 标记单条通知为已读
+export function markAsRead(notificationId) {
+    return request.put(`/notifications/mark-read/${notificationId}`)
 }
 
-// 手动触发预定检查
-export function checkReservations() {
-    return request({
-        url: '/api/demo/check/reservations',
-        method: 'get'
-    })
+// 标记所有通知为已读
+export function markAllAsRead() {
+    return request.put('/notifications/mark-all-read')
 }
 
-// 手动触发逾期检查
-export function checkOverdue() {
-    return request({
-        url: '/api/demo/check/overdue',
-        method: 'get'
-    })
+// 管理员：获取所有通知
+export function getAllNotifications(params) {
+    return request.get('/notifications/admin/all', { params })
 }
 
-// 手动发送待处理邮件
-export function sendPendingEmails() {
-    return request({
-        url: '/api/demo/send/emails',
-        method: 'get'
-    })
+// 管理员：发送系统通知
+export function sendSystemNotification(data) {
+    return request.post('/notifications/admin/system', data)
+}
+
+// 管理员：发送重要通知
+export function sendImportantNotification(data) {
+    return request.post('/notifications/admin/important', data)
 }

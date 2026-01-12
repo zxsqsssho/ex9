@@ -13,7 +13,7 @@ import com.library.repository.ReservationRepository;
 import com.library.repository.FineRepository;
 import com.library.service.BorrowService;
 import com.library.service.AuthService;
-import com.library.service.NotificationService;
+import com.library.service.EmailNotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,7 +34,7 @@ public class BorrowServiceImpl implements BorrowService {
     private final ReservationRepository reservationRepository;
     private final FineRepository fineRepository;
     private final AuthService authService;
-    private final NotificationService notificationService;
+    private final EmailNotificationService emailNotificationService;
 
     @Override
     @Transactional
@@ -141,10 +141,16 @@ public class BorrowServiceImpl implements BorrowService {
         // 检查该图书是否有预定，如有则通知第一个预定者
         List<Reservation> pendingReservations = reservationRepository.findByBookIdAndStatusOrderByReserveTimeAsc(
                 borrowRecord.getBookId(), Reservation.ReservationStatus.PENDING);
-        if (!pendingReservations.isEmpty()) {
-            notificationService.notifyReservationAvailable(pendingReservations.get(0));
-        }
 
+        if (!pendingReservations.isEmpty()) {
+            // 获取最早预定的用户
+            Reservation earliestReservation = pendingReservations.get(0);
+            earliestReservation.setStatus(Reservation.ReservationStatus.READY);
+            reservationRepository.save(earliestReservation);
+
+            // 通知预定者图书可借
+            emailNotificationService.notifyReservationAvailable(earliestReservation.getId());
+        }
         return ApiResponse.success("归还成功", borrowRecord);
     }
 
@@ -224,4 +230,6 @@ public class BorrowServiceImpl implements BorrowService {
         borrowRecordRepository.save(borrowRecord);
         return ApiResponse.success("状态更新成功");
     }
+
+
 }

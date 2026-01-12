@@ -8,11 +8,12 @@ import com.library.repository.ReservationRepository;
 import com.library.repository.BooksRepository;
 import com.library.repository.UserRepository;
 import com.library.repository.BorrowRecordRepository;
+import com.library.service.EmailNotificationService;
 import com.library.service.ReservationService;
 import com.library.service.AuthService;
-import com.library.service.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReservationServiceImpl implements ReservationService {
@@ -29,7 +31,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final UserRepository userRepository;
     private final BorrowRecordRepository borrowRecordRepository;
     private final AuthService authService;
-    private final NotificationService notificationService;
+    private final EmailNotificationService emailNotificationService;
 
     @Override
     @Transactional
@@ -78,7 +80,18 @@ public class ReservationServiceImpl implements ReservationService {
         reservationRepository.save(reservation);
 
         // 通知当前借阅者该图书已被预定
-        notificationService.notifyCurrentLender(bookId);
+        List<BorrowRecord> currentBorrows = borrowRecordRepository
+                .findByBookIdAndStatus(bookId, BorrowRecord.BorrowStatus.BORROWED);
+
+        if (!currentBorrows.isEmpty()) {
+            try {
+                emailNotificationService.notifyCurrentBorrowerForReservation(bookId, userId);
+                log.info("已发送预定通知给当前借阅者，图书ID: {}", bookId);
+            } catch (Exception e) {
+                log.error("发送预定通知失败，图书ID: {}", bookId, e);
+                // 通知失败不影响预定成功
+            }
+        }
 
         return ApiResponse.success("预定成功，预定有效期7天", reservation);
     }
