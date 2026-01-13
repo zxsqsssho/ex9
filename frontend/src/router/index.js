@@ -25,7 +25,7 @@ const BorrowManagement = () => import('@/views/admin/BorrowManagement.vue')
 const routes = [
     {
         path: '/',
-        redirect: '/home/my-notifications'
+        redirect: '/login'
     },
     {
         path: '/login',
@@ -44,6 +44,7 @@ const routes = [
         component: Home,
         name: 'Home',
         meta: { requiresAuth: true },
+        redirect: '/home/my-notifications',
         children: [
             // 公共模块
             {

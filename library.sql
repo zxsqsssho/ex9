@@ -83,24 +83,6 @@ INSERT INTO `branches` VALUES (4, '江南', '', '2026-01-09 00:37:27');
 INSERT INTO `branches` VALUES (5, '丰顺', '', '2026-01-09 00:37:27');
 
 -- ----------------------------
--- Table structure for email_notifications
--- ----------------------------
--- DROP TABLE IF EXISTS `email_notifications`;
--- CREATE TABLE `email_notifications`  (
---   `id` bigint(20) NOT NULL AUTO_INCREMENT,
---   `content` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
---   `create_time` datetime(6) NOT NULL,
---   `email` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
---   `error_message` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
---   `send_time` datetime(6) NULL DEFAULT NULL,
---   `status` enum('FAILED','PENDING','SENT') CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
---   `subject` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
---   `type` enum('OVERDUE_REMINDER','RESERVATION_AVAILABLE','RESERVATION_EXPIRY','RESERVATION_NOTIFY_LENDER') CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
---   `user_id` bigint(20) NOT NULL,
---   PRIMARY KEY (`id`) USING BTREE
--- ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
 -- Table structure for fines
 -- ----------------------------
 DROP TABLE IF EXISTS `fines`;
@@ -330,6 +312,19 @@ INSERT INTO `reservations` VALUES (5, 5, 5, '2026-01-17 11:00:00.000000', '2026-
 
 INSERT INTO `notifications` VALUES (1, 10, '图书可借通知', '您预约的《Java编程思想》现已可借阅，请在三日内到图书馆办理借阅手续。', 'RESERVATION_AVAILABLE', 0, 1, CURRENT_TIMESTAMP);
 INSERT INTO `notifications` VALUES (2, 11, '逾期提醒', '您借阅的《红楼梦》已逾期2天，请尽快归还。', 'OVERDUE_REMINDER', 0, 1, CURRENT_TIMESTAMP);
-INSERT INTO `notifications` VALUES (3, 12, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
-INSERT INTO `notifications` VALUES (4, 13, '预约提醒', '您预约的图书将在24小时后过期，请及时处理。', 'RESERVATION_REMINDER', 0, 0, CURRENT_TIMESTAMP);
-INSERT INTO `notifications` VALUES (5, 14, '罚款通知', '您有未支付的逾期罚款，请及时缴纳。', 'SYSTEM_NOTIFICATION', 0, 1, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (3, 13, '预约提醒', '您预约的图书将在24小时后过期，请及时处理。', 'RESERVATION_REMINDER', 0, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (4, 14, '罚款通知', '您有未支付的逾期罚款，请及时缴纳。', 'SYSTEM_NOTIFICATION', 0, 1, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (5, 1, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (6, 2, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (7, 3, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (8, 4, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (9, 5, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (10, 6, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (11, 7, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (12, 8, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (13, 9, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (14, 10, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (15, 11, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (16, 12, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (17, 13, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);
+INSERT INTO `notifications` VALUES (18, 14, '系统通知', '图书馆系统将于本周六进行维护，期间暂停服务。', 'SYSTEM_NOTIFICATION', 1, 0, CURRENT_TIMESTAMP);

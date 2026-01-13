@@ -134,7 +134,7 @@ const handleLogout = async () => {
   width: 280px;
   background: #4d6688;
   color: #fff;
-  padding: 30px 20px;
+  padding: 30px 0; /* 改为左右0，顶部30px */
   display: flex;
   flex-direction: column;
   position: relative;
@@ -145,6 +145,7 @@ const handleLogout = async () => {
 .logo {
   text-align: center;
   margin-bottom: 40px;
+  padding: 0 20px; /* 给LOGO添加内边距 */
 }
 
 .logo .title {
@@ -160,23 +161,63 @@ const handleLogout = async () => {
   line-height: 1.2;
 }
 
-.el-menu-vertical-demo ,
-.el-menu-vertical-demo  {
-  font-size: 14px;
-  padding-left: 15px;
-  display: flex;
-  align-items: center;
-  white-space: normal;
+/* 重写Element Plus菜单样式 */
+:deep(.el-menu) {
+  border-right: none !important;
+  background-color: transparent !important;
 }
 
-.el-menu-vertical-demo  {
+:deep(.el-sub-menu) {
+  margin-bottom: 5px;
+}
+
+:deep(.el-sub-menu__title) {
+  height: 48px;
+  line-height: 48px;
+  padding-left: 24px !important;
+  font-size: 14px;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+}
+
+:deep(.el-sub-menu__title):hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+:deep(.el-sub-menu__title .el-icon) {
   font-size: 18px;
   margin-right: 10px;
 }
 
-.el-menu-vertical-demo .el-sub-menu {
-  padding-left: 35px;
-  display: block;
+:deep(.el-menu-item) {
+  height: 40px;
+  line-height: 40px;
+  padding-left: 56px !important; /* 增加缩进，形成层次感 */
+  font-size: 13px;
+  margin: 2px 0;
+  transition: all 0.3s;
+}
+
+:deep(.el-menu-item):hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+:deep(.el-menu-item.is-active) {
+  background-color: rgba(255, 208, 75, 0.2) !important;
+  color: #ffd04b !important;
+}
+
+/* 菜单图标统一大小 */
+:deep(.el-icon) {
+  font-size: 16px;
+  vertical-align: middle;
+}
+
+/* 子菜单箭头样式 */
+:deep(.el-sub-menu__icon-arrow) {
+  font-size: 12px;
+  margin-top: -6px;
 }
 
 .home-right {
@@ -200,8 +241,9 @@ const handleLogout = async () => {
   flex-shrink: 0;
 }
 
-.header el-button {
+.header :deep(.el-button) {
   color: white;
+  margin-left: 20px;
 }
 
 .content {
@@ -214,7 +256,19 @@ const handleLogout = async () => {
 @media (max-width: 768px) {
   .home-left {
     width: 220px;
-    padding: 20px 10px;
+    padding: 20px 0;
+  }
+
+  .logo {
+    padding: 0 15px;
+  }
+
+  :deep(.el-sub-menu__title) {
+    padding-left: 20px !important;
+  }
+
+  :deep(.el-menu-item) {
+    padding-left: 48px !important;
   }
 
   .home-right {
