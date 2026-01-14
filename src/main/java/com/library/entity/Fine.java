@@ -1,4 +1,4 @@
-// Fine.java
+// src/main/java/com/library/entity/Fine.java
 package com.library.entity;
 
 import jakarta.persistence.*;

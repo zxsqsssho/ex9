@@ -1,3 +1,4 @@
+<!--frontend/src/views/Register.vue-->
 <template>
   <div class="register-page">
     <div class="register-container">

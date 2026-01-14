@@ -1,3 +1,4 @@
+<!--frontend/src/views/admin/BookManagement.vue-->
 <template>
   <div class="book-management">
     <el-card>

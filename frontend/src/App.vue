@@ -1,3 +1,4 @@
+<!--frontend/src/App.vue-->
 <script setup>
 
 </script>

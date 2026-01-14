@@ -1,3 +1,4 @@
+//com/library/entity/Notification.java
 package com.library.entity;
 
 import jakarta.persistence.*;

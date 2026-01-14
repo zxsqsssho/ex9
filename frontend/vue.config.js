@@ -1,4 +1,4 @@
-// vue.config.js
+// frontend/vue.config.js
 module.exports = {
     devServer: {
         port: 8081,

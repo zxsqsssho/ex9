@@ -1,3 +1,4 @@
+<!--frontend/src/views/admin/BorrowManagement.vue-->
 <template>
   <div class="borrow-management">
     <el-card>

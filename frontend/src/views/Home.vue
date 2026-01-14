@@ -1,3 +1,4 @@
+<!--frontend/src/views/Home.vue-->
 <template>
   <div class="home-page">
     <div class="home-container">

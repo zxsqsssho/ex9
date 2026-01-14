@@ -1,3 +1,4 @@
+<!--frontend/src/views/book/BookDetail.vue-->
 <template>
   <div class="book-detail">
     <el-card>
