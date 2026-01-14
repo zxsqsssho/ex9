@@ -19,15 +19,17 @@
           </el-select>
         </el-form-item>
         <el-form-item label="图书类型">
-          <el-select v-model="queryForm.bookType" placeholder="请选择类型">
-            <el-option label="图书" value="book"></el-option>
-            <el-option label="杂志" value="magazine"></el-option>
+          <el-select v-model="queryForm.bookType">
+            <el-option label="技术书籍" value="技术书籍" />
+            <el-option label="教材" value="教材" />
+            <el-option label="古典文学" value="古典文学" />
+            <el-option label="教辅" value="教辅" />
           </el-select>
         </el-form-item>
         <el-form-item label="可借状态">
-          <el-select v-model="queryForm.status" placeholder="请选择状态">
-            <el-option label="正常可借" value="normal"></el-option>
-            <el-option label="缺货" value="out_of_stock"></el-option>
+          <el-select v-model="queryForm.status">
+            <el-option label="可借" value="AVAILABLE" />
+            <el-option label="不可借" value="OUT_OF_STOCK" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -45,11 +47,8 @@
         <el-table-column prop="isbn" label="ISBN" width="180"></el-table-column>
         <el-table-column prop="category" label="分类" width="100"></el-table-column>
         <el-table-column prop="branchName" label="所属分馆" width="100"></el-table-column>
-        <el-table-column prop="bookType" label="类型" width="80">
-          <template #default="scope">
-            {{ scope.row.bookType === 'book' ? '图书' : '杂志' }}
-          </template>
-        </el-table-column>
+        <el-table-column prop="bookType" label="类型" />
+        <el-table-column prop="status" label="状态" />
         <el-table-column prop="availableNum" label="可借数量" width="100"></el-table-column>
         <el-table-column label="操作" width="150">
           <template #default="scope">
@@ -103,7 +102,7 @@ const queryForm = ref({
   author: '',
   isbn: '',
   category: '',
-  branchId: '',
+  branchId: null,
   bookType: '',
   status: '',
   pageNum: 1,
@@ -124,7 +123,7 @@ const getBranchList = async () => {
   if (isAdmin) {
     try {
       const res = await axios.get('/branches')
-      branchList.value = res.data.data
+      branchList.value = res.data
     } catch (err) {
       ElMessage.error('获取分馆列表失败：' + (err.response?.data?.msg || err.message))
       branchList.value = [{ branchId: 0, branchName: '默认分馆' }] // 后备列表
@@ -168,7 +167,7 @@ const resetQuery = () => {
     author: '',
     isbn: '',
     category: '',
-    branchId: isAdmin ? '' : 0,
+    branchId: isAdmin ? null : 0,
     bookType: '',
     status: '',
     pageNum: 1,

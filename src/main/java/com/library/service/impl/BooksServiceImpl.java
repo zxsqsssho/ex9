@@ -83,24 +83,50 @@ public class BooksServiceImpl implements BooksService {
     }
 
     @Override
-    public Page<Books> findBooks(Integer branchId, String bookName, String author, Pageable pageable) {
-        if (branchId != null && bookName != null && author != null) {
-            return booksRepository.findByBranchIdAndBookNameLikeAndAuthorLike(
-                    branchId, "%" + bookName + "%", "%" + author + "%", pageable);
-        } else if (branchId != null && bookName != null) {
-            return booksRepository.findByBranchIdAndBookNameLike(branchId, "%" + bookName + "%", pageable);
-        } else if (branchId != null && author != null) {
-            return booksRepository.findByBranchIdAndAuthorLike(branchId, "%" + author + "%", pageable);
-        } else if (bookName != null && author != null) {
-            return booksRepository.findByBookNameLikeAndAuthorLike("%" + bookName + "%", "%" + author + "%", pageable);
-        } else if (branchId != null) {
-            return booksRepository.findByBranchId(branchId, pageable);
-        } else if (bookName != null) {
-            return booksRepository.findByBookNameLike("%" + bookName + "%", pageable);
-        } else if (author != null) {
-            return booksRepository.findByAuthorLike("%" + author + "%", pageable);
-        } else {
-            return booksRepository.findAll(pageable);
-        }
+    public Page<Books> findBooks(
+            Integer branchId,
+            String bookName,
+            String author,
+            String bookType,
+            String status,
+            String category,
+            Pageable pageable
+    ) {
+        return booksRepository.findAll((root, query, cb) -> {
+            var predicates = cb.conjunction();
+
+            if (branchId != null && branchId > 0) {
+                predicates = cb.and(predicates,
+                        cb.equal(root.get("branchId"), branchId));
+            }
+
+            if (bookName != null && !bookName.isBlank()) {
+                predicates = cb.and(predicates,
+                        cb.like(root.get("bookName"), "%" + bookName + "%"));
+            }
+
+            if (author != null && !author.isBlank()) {
+                predicates = cb.and(predicates,
+                        cb.like(root.get("author"), "%" + author + "%"));
+            }
+
+            if (bookType != null && !bookType.isBlank()) {
+                predicates = cb.and(predicates,
+                        cb.equal(root.get("bookType"), bookType));
+            }
+
+            if (status != null && !status.isBlank()) {
+                predicates = cb.and(predicates,
+                        cb.equal(root.get("status"), status));
+            }
+
+            if (category != null && !category.isBlank()) {
+                predicates = cb.and(predicates,
+                        cb.equal(root.get("category"), category));
+            }
+
+            return predicates;
+        }, pageable);
     }
+
 }

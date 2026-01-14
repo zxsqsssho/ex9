@@ -1,10 +1,7 @@
 //src/main/java/com/library/controller/BooksController.java
 package com.library.controller;
 
-import com.library.dto.ApiResponse;
-import com.library.dto.BookCreateDTO;
-import com.library.dto.BookQueryDTO;
-import com.library.dto.BookUpdateDTO;
+import com.library.dto.*;
 import com.library.entity.Books;
 import com.library.entity.User;
 import com.library.service.BooksService;
@@ -23,21 +20,6 @@ import org.springframework.web.bind.annotation.*;
 public class BooksController {
     private final BooksService booksService;
     private final AuthService authService;
-
-    /**
-     * 分页查询图书（所有用户可访问）
-     */
-    @GetMapping
-    public ApiResponse<?> getBooks(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Integer branchId,
-            @RequestParam(required = false) String bookName,
-            @RequestParam(required = false) String author) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Books> booksPage = booksService.findBooks(branchId, bookName, author, pageable);
-        return ApiResponse.success(booksPage);
-    }
 
     /**
      * 根据ID获取图书详情
@@ -100,8 +82,9 @@ public class BooksController {
 
     @PostMapping("/query")
     public ApiResponse<?> queryBooks(@RequestBody BookQueryDTO dto) {
+
         Pageable pageable = PageRequest.of(
-                Math.max(dto.getPageNum() - 1, 0),
+                dto.getPageNum() - 1,
                 dto.getPageSize()
         );
 
@@ -109,10 +92,36 @@ public class BooksController {
                 dto.getBranchId(),
                 dto.getBookName(),
                 dto.getAuthor(),
+                dto.getBookType(),
+                dto.getStatus(),
+                dto.getCategory(),
                 pageable
         );
-        return ApiResponse.success(booksPage);
+
+        // ⭐⭐ 关键：Entity → DTO 映射
+        Page<BookListDTO> dtoPage = booksPage.map(book -> {
+            BookListDTO d = new BookListDTO();
+            d.setBookId(book.getBookId());
+            d.setBookName(book.getBookName());
+            d.setAuthor(book.getAuthor());
+            d.setIsbn(book.getIsbn());
+            d.setCategory(book.getCategory());
+            d.setBookType(book.getBookType());
+            d.setAvailableNum(book.getAvailableNum());
+            d.setStatus(book.getStatus());
+
+            d.setBranchId(book.getBranchId());
+            d.setBranchName(
+                    book.getBranch() != null ? book.getBranch().getBranchName() : null
+            );
+
+            return d;
+        });
+
+        return ApiResponse.success(dtoPage);
     }
+
+
 
 
 }

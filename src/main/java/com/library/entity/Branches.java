@@ -2,12 +2,8 @@
 package com.library.entity;
 
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
 
 import java.time.LocalDateTime;
 
@@ -17,8 +13,9 @@ import java.time.LocalDateTime;
 public class Branches {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 自增主键（对应MySQL的AUTO_INCREMENT）
-    @jakarta.persistence.Id
+    @Column(name = "branch_id")
     private Integer branchId;        // 分馆ID
+    @Column(name = "branch_name")
     private String branchName;       // 分馆名称
     private String address;          // 分馆地址
     private LocalDateTime createTime;// 创建时间

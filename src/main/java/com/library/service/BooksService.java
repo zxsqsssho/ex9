@@ -13,5 +13,14 @@ public interface BooksService {
     Books save(BookCreateDTO bookDTO);
     Books update(Long id, BookUpdateDTO bookDTO);
     void deleteById(Long id);
-    Page<Books> findBooks(Integer branchId, String bookName, String author, Pageable pageable);
+    Page<Books> findBooks(
+            Integer branchId,
+            String bookName,
+            String author,
+            String bookType,
+            String status,
+            String category,
+            Pageable pageable
+    );
+
 }
