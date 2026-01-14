@@ -92,6 +92,7 @@ public class BooksController {
                 dto.getBranchId(),
                 dto.getBookName(),
                 dto.getAuthor(),
+                dto.getIsbn(),
                 dto.getBookType(),
                 dto.getStatus(),
                 dto.getCategory(),

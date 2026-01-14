@@ -87,6 +87,7 @@ public class BooksServiceImpl implements BooksService {
             Integer branchId,
             String bookName,
             String author,
+            String isbn,
             String bookType,
             String status,
             String category,
@@ -108,6 +109,12 @@ public class BooksServiceImpl implements BooksService {
             if (author != null && !author.isBlank()) {
                 predicates = cb.and(predicates,
                         cb.like(root.get("author"), "%" + author + "%"));
+            }
+
+            // ISBN 精确匹配（关键）
+            if (isbn != null && !isbn.isBlank()) {
+                predicates = cb.and(predicates,
+                        cb.equal(root.get("isbn"), isbn));
             }
 
             if (bookType != null && !bookType.isBlank()) {

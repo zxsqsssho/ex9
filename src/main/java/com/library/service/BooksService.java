@@ -17,6 +17,7 @@ public interface BooksService {
             Integer branchId,
             String bookName,
             String author,
+            String isbn,
             String bookType,
             String status,
             String category,
