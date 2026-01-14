@@ -124,7 +124,7 @@ const getBranchList = async () => {
   if (isAdmin) {
     try {
       const res = await axios.get('/branches')
-      branchList.value = res.data
+      branchList.value = res.data.data
     } catch (err) {
       ElMessage.error('获取分馆列表失败：' + (err.response?.data?.msg || err.message))
       branchList.value = [{ branchId: 0, branchName: '默认分馆' }] // 后备列表
@@ -143,14 +143,23 @@ const handleQuery = async () => {
   loading.value = true
   try {
     const res = await axios.post('/books/query', queryForm.value)
-    bookList.value = res.data.records
-    total.value = res.data.total
+
+    // ⚠️ axios 已经在拦截器里拆过 data
+    const pageData = res.data
+
+    bookList.value = pageData.content
+    total.value = pageData.totalElements
+
+    // 后端页码从 0 开始
+    queryForm.value.pageNum = pageData.number + 1
   } catch (error) {
-    ElMessage.error('查询失败：' + (error.response?.data?.msg || error.message))
+    ElMessage.error('查询失败：' + (error.response?.data?.message || error.message))
   } finally {
     loading.value = false
   }
 }
+
+
 
 // 重置查询条件
 const resetQuery = () => {

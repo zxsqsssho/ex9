@@ -3,6 +3,7 @@ package com.library.controller;
 
 import com.library.dto.ApiResponse;
 import com.library.dto.BookCreateDTO;
+import com.library.dto.BookQueryDTO;
 import com.library.dto.BookUpdateDTO;
 import com.library.entity.Books;
 import com.library.entity.User;
@@ -96,4 +97,22 @@ public class BooksController {
         booksService.deleteById(id);
         return ApiResponse.success("图书删除成功");
     }
+
+    @PostMapping("/query")
+    public ApiResponse<?> queryBooks(@RequestBody BookQueryDTO dto) {
+        Pageable pageable = PageRequest.of(
+                Math.max(dto.getPageNum() - 1, 0),
+                dto.getPageSize()
+        );
+
+        Page<Books> booksPage = booksService.findBooks(
+                dto.getBranchId(),
+                dto.getBookName(),
+                dto.getAuthor(),
+                pageable
+        );
+        return ApiResponse.success(booksPage);
+    }
+
+
 }
