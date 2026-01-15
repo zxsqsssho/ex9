@@ -4,18 +4,12 @@ import com.library.dto.ApiResponse;
 import com.library.dto.BorrowCreateDTO;
 import com.library.dto.BorrowRecordDTO;
 import com.library.entity.*;
-import com.library.repository.BooksRepository;
-import com.library.repository.BorrowRecordRepository;
-import com.library.repository.UserRepository;
-import com.library.repository.ReservationRepository;
-import com.library.repository.BranchesRepository;
-import com.library.repository.FineRepository;
+import com.library.repository.*;
 import com.library.service.BorrowService;
 import com.library.service.AuthService;
 import com.library.service.EmailNotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -31,10 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
-// 确保正确实现 BorrowService 接口
 public class BorrowServiceImpl implements BorrowService {
     private final BorrowRecordRepository borrowRecordRepository;
     private final BooksRepository booksRepository;
@@ -45,7 +37,7 @@ public class BorrowServiceImpl implements BorrowService {
     private final EmailNotificationService emailNotificationService;
     private final BranchesRepository branchesRepository;
 
-    // 借阅图书逻辑（核心修复：状态仅使用AVAILABLE/OUT_OF_STOCK）
+    // 借阅图书（保持不变，自动关联当前分馆）
     @Override
     @Transactional
     public ApiResponse<?> borrowBook(BorrowCreateDTO borrowDTO) {
@@ -81,38 +73,34 @@ public class BorrowServiceImpl implements BorrowService {
         // 6. 创建借阅记录
         BorrowRecord borrowRecord = new BorrowRecord();
         borrowRecord.setUserId(userId);
-        borrowRecord.setBookId(book.getBookId().longValue()); // 图书ID为Integer，转换为Long类型
+        borrowRecord.setBookId(book.getBookId().longValue());
         borrowRecord.setBorrowTime(borrowTime);
         borrowRecord.setDueTime(dueTime);
         borrowRecord.setStatus(BorrowRecord.BorrowStatus.BORROWED);
         borrowRecord.setBranchId(borrowDTO.getBranchId());
         borrowRecord.setReminderCount(0);
         borrowRecordRepository.save(borrowRecord);
-        // 7. 更新图书可借数量和状态（核心修复：仅使用AVAILABLE/OUT_OF_STOCK）
+        // 7. 更新图书可借数量
         book.setAvailableNum(book.getAvailableNum() - 1);
-        if (book.getAvailableNum() == 0) {
-            book.setStatus("OUT_OF_STOCK"); // 库存为0 → 不可借
-        } else {
-            book.setStatus("AVAILABLE"); // 库存>0 → 可借（替换原"normal"）
-        }
+        book.setStatus(book.getAvailableNum() > 0 ? "AVAILABLE" : "OUT_OF_STOCK");
         booksRepository.save(book);
         return ApiResponse.success("借阅成功", borrowRecord);
     }
 
-    /**
-     * 归还图书逻辑（核心修复：状态仅使用AVAILABLE/OUT_OF_STOCK）
-     */
+    // 归还图书（保持不变）
     @Override
     @Transactional
     public ApiResponse<?> returnBook(Long borrowId) {
         Long userId = authService.getCurrentUserId();
         BorrowRecord borrowRecord = borrowRecordRepository.findById(borrowId)
                 .orElseThrow(() -> new EntityNotFoundException("借阅记录不存在"));
-        // 检查是否是本人借阅或管理员
-        if (!borrowRecord.getUserId().equals(userId)
-                && !authService.isSystemAdmin()
-                && !authService.isBranchAdmin()) {
-            return ApiResponse.error(403, "无权归还他人借阅的图书");
+        // 检查是否是本人借阅或管理员（分馆管理员只能处理本馆归还）
+        if (!borrowRecord.getUserId().equals(userId)) {
+            if (authService.isBranchAdmin() && !borrowRecord.getBranchId().equals(authService.getCurrentUserBranchId())) {
+                return ApiResponse.error(403, "无权归还其他分馆的图书");
+            } else if (!authService.isSystemAdmin() && !authService.isBranchAdmin()) {
+                return ApiResponse.error(403, "无权归还他人借阅的图书");
+            }
         }
         // 已归还则无需处理
         if (borrowRecord.getStatus() == BorrowRecord.BorrowStatus.RETURNED) {
@@ -129,52 +117,28 @@ public class BorrowServiceImpl implements BorrowService {
         borrowRecord.setOverdueDays((int) overdueDays);
         borrowRecord.setStatus(BorrowRecord.BorrowStatus.RETURNED);
         borrowRecordRepository.save(borrowRecord);
-        // 更新图书可借数量和状态（核心修复：仅使用AVAILABLE）
+        // 更新图书可借数量
         Books book = booksRepository.findById(borrowRecord.getBookId())
                 .orElseThrow(() -> new EntityNotFoundException("图书不存在"));
         book.setAvailableNum(book.getAvailableNum() + 1);
-        book.setStatus("AVAILABLE"); // 归还后无论库存多少，均设为可借（替换原"normal"）
+        book.setStatus("AVAILABLE");
         booksRepository.save(book);
-
-        // ========== 优先分配给预定用户 ==========
-        List<Reservation> pendingReservations = reservationRepository
-                .findByBookIdAndStatusOrderByReserveTimeAsc(
-                        borrowRecord.getBookId(), Reservation.ReservationStatus.PENDING);
-        if (!pendingReservations.isEmpty()) {
-            int assignableNum = 1;
-            int assignedCount = 0;
-            for (Reservation reservation : pendingReservations) {
-                if (assignedCount >= assignableNum) {
-                    break;
-                }
-                reservation.setStatus(Reservation.ReservationStatus.READY);
-                reservationRepository.save(reservation);
-                emailNotificationService.notifyReservationAvailable(reservation.getId());
-                assignedCount++;
-                log.info("图书{}（分馆{}）已分配给预定用户{}，预定ID：{}",
-                        book.getBookId(), book.getBranchId(), reservation.getUserId(), reservation.getId());
-            }
-            // 分配后更新图书可借数量和状态
-            int newAvailableNum = book.getAvailableNum() - assignedCount;
-            book.setAvailableNum(newAvailableNum);
-            if (newAvailableNum == 0) {
-                book.setStatus("OUT_OF_STOCK"); // 分配后库存为0 → 不可借
-            } else {
-                book.setStatus("AVAILABLE"); // 分配后库存>0 → 可借
-            }
-            booksRepository.save(book);
-        }
-
         // 如有逾期，创建罚款记录
         if (overdueDays > 0) {
             BigDecimal fineAmount = BigDecimal.valueOf(overdueDays * 1.0);
             fineRepository.calculateOverdueFine(borrowRecord.getId(), fineAmount);
         }
-
+        // 检查该图书是否有预定，如有则通知第一个预定者
+        List<Reservation> pendingReservations = reservationRepository.findByBookIdAndStatusOrderByReserveTimeAsc(
+                borrowRecord.getBookId(), Reservation.ReservationStatus.PENDING);
+        if (!pendingReservations.isEmpty()) {
+            Reservation earliestReservation = pendingReservations.get(0);
+            emailNotificationService.notifyReservationAvailable(earliestReservation.getId());
+        }
         return ApiResponse.success("归还成功", borrowRecord);
     }
 
-    // 其他方法保持不变（续借、查询等）
+    // 续借图书（保持不变）
     @Override
     @Transactional
     public ApiResponse<?> renewBook(Long bookId) {
@@ -183,6 +147,10 @@ public class BorrowServiceImpl implements BorrowService {
         BorrowRecord borrowRecord = borrowRecordRepository.findByUserIdAndBookIdAndStatus(
                         userId, bookId, BorrowRecord.BorrowStatus.BORROWED)
                 .orElseThrow(() -> new EntityNotFoundException("未找到该图书的借阅记录"));
+        // 分馆管理员只能续借本馆图书
+        if (authService.isBranchAdmin() && !borrowRecord.getBranchId().equals(authService.getCurrentUserBranchId())) {
+            return ApiResponse.error(403, "无权续借其他分馆的图书");
+        }
         // 检查图书是否有预定，如有则不能续借
         List<Reservation> pendingReservations = reservationRepository.findByBookIdAndStatus(
                 bookId, Reservation.ReservationStatus.PENDING);
@@ -203,6 +171,7 @@ public class BorrowServiceImpl implements BorrowService {
         return ApiResponse.success("续借成功", newDueTime);
     }
 
+    // 我的借阅列表（保持不变）
     @Override
     public ApiResponse<?> getMyBorrowList(Pageable pageable) {
         Long userId = authService.getCurrentUserId();
@@ -236,6 +205,7 @@ public class BorrowServiceImpl implements BorrowService {
         return ApiResponse.success(dtoPage);
     }
 
+    // 我的借阅历史（保持不变）
     @Override
     public ApiResponse<?> getMyBorrowHistory(Pageable pageable) {
         Long userId = authService.getCurrentUserId();
@@ -269,16 +239,7 @@ public class BorrowServiceImpl implements BorrowService {
         return ApiResponse.success(dtoPage);
     }
 
-    @Override
-    @Transactional
-    public ApiResponse<?> updateBorrowStatus(Long borrowId, String status) {
-        BorrowRecord borrowRecord = borrowRecordRepository.findById(borrowId)
-                .orElseThrow(() -> new EntityNotFoundException("借阅记录不存在"));
-        borrowRecord.setStatus(BorrowRecord.BorrowStatus.valueOf(status));
-        borrowRecordRepository.save(borrowRecord);
-        return ApiResponse.success("状态更新成功");
-    }
-
+    // 管理员获取所有借阅记录（核心修改：分馆管理员仅查本馆）
     @Override
     public ApiResponse<?> getAllBorrowRecords(
             String userName,
@@ -286,6 +247,10 @@ public class BorrowServiceImpl implements BorrowService {
             Integer branchId,
             String status,
             Pageable pageable) {
+        // 分馆管理员强制筛选本馆
+        if (authService.isBranchAdmin()) {
+            branchId = authService.getCurrentUserBranchId();
+        }
         Page<BorrowRecord> borrowRecords;
         String finalUserName = StringUtils.hasText(userName) ? userName : null;
         String finalBookName = StringUtils.hasText(bookName) ? bookName : null;
@@ -297,7 +262,7 @@ public class BorrowServiceImpl implements BorrowService {
                 borrowStatus = null;
             }
         }
-        // 多条件组合查询
+        // 多条件组合查询（包含分馆筛选）
         if (finalUserName != null && finalBookName != null) {
             borrowRecords = borrowRecordRepository.findByUserNameAndBookName(
                     finalUserName, finalBookName, branchId, borrowStatus, pageable);
@@ -316,7 +281,7 @@ public class BorrowServiceImpl implements BorrowService {
         } else {
             borrowRecords = borrowRecordRepository.findAll(pageable);
         }
-        // 新增：补充用户名称和图书名称（关联查询）
+        // 封装结果
         List<Map<String, Object>> result = borrowRecords.stream().map(record -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", record.getId());
@@ -339,6 +304,20 @@ public class BorrowServiceImpl implements BorrowService {
                 result, pageable, borrowRecords.getTotalElements()
         );
         return ApiResponse.success(responsePage);
+    }
+
+    @Override
+    @Transactional
+    public ApiResponse<?> updateBorrowStatus(Long borrowId, String status) {
+        BorrowRecord borrowRecord = borrowRecordRepository.findById(borrowId)
+                .orElseThrow(() -> new EntityNotFoundException("借阅记录不存在"));
+        // 分馆管理员只能更新本馆记录
+        if (authService.isBranchAdmin() && !borrowRecord.getBranchId().equals(authService.getCurrentUserBranchId())) {
+            return ApiResponse.error(403, "无权更新其他分馆的借阅记录");
+        }
+        borrowRecord.setStatus(BorrowRecord.BorrowStatus.valueOf(status));
+        borrowRecordRepository.save(borrowRecord);
+        return ApiResponse.success("状态更新成功");
     }
 
     // 计算逾期天数（辅助方法）

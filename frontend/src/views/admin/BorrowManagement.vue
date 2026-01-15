@@ -5,7 +5,7 @@
       <div class="card-header">
         <h2>借阅管理</h2>
       </div>
-      <!-- 筛选条件 -->
+      <!-- 筛选条件（核心修改：分馆管理员禁用分馆筛选） -->
       <el-form :model="queryForm" inline class="query-form" @submit.prevent="getBorrowList">
         <el-form-item label="用户名称">
           <el-input v-model="queryForm.userName" placeholder="请输入用户名称"></el-input>
@@ -13,9 +13,15 @@
         <el-form-item label="图书名称">
           <el-input v-model="queryForm.bookName" placeholder="请输入图书名称"></el-input>
         </el-form-item>
-        <el-form-item label="所属分馆">
+        <!-- 核心修改：分馆管理员禁用分馆选择，默认当前分馆 -->
+        <el-form-item label="所属分馆" v-if="!isBranchAdmin">
           <el-select v-model="queryForm.branchId" placeholder="请选择分馆">
             <el-option v-for="branch in branchList" :key="branch.branchId" :label="branch.branchName" :value="branch.branchId"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属分馆" v-else>
+          <el-select v-model="queryForm.branchId" placeholder="当前分馆" disabled>
+            <el-option :key="currentBranchId" :label="currentBranchName" :value="currentBranchId"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="借阅状态">
@@ -30,7 +36,7 @@
           <el-button @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
-      <!-- 借阅记录列表：固定高度 -->
+      <!-- 借阅记录列表（保持不变） -->
       <el-table
           :data="borrowList.content || []"
           border
@@ -74,7 +80,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <!-- 分页 -->
+      <!-- 分页（保持不变） -->
       <el-pagination
           v-if="borrowList.total > 0"
           @size-change="handleSizeChange"
@@ -87,22 +93,26 @@
           style="margin-top: 20px; text-align: right"
       ></el-pagination>
     </el-card>
-    <!-- 预定管理 -->
+    <!-- 预定管理（核心修改：分馆管理员禁用分馆筛选） -->
     <el-card style="margin-top: 20px;">
       <div class="card-header">
         <h2>预定管理</h2>
       </div>
-      <!-- 预定筛选条件：修复图书状态查询 -->
       <el-form :model="reserveQueryForm" inline class="query-form" @submit.prevent="getReservationList">
         <el-form-item label="图书名称">
           <el-input v-model="reserveQueryForm.bookName" placeholder="请输入图书名称"></el-input>
         </el-form-item>
-        <el-form-item label="所属分馆">
+        <!-- 核心修改：分馆管理员禁用分馆选择，默认当前分馆 -->
+        <el-form-item label="所属分馆" v-if="!isBranchAdmin">
           <el-select v-model="reserveQueryForm.branchId" placeholder="请选择分馆">
             <el-option v-for="branch in branchList" :key="branch.branchId" :label="branch.branchName" :value="branch.branchId"></el-option>
           </el-select>
         </el-form-item>
-        <!-- 图书状态筛选（修复参数传递） -->
+        <el-form-item label="所属分馆" v-else>
+          <el-select v-model="reserveQueryForm.branchId" placeholder="当前分馆" disabled>
+            <el-option :key="currentBranchId" :label="currentBranchName" :value="currentBranchId"></el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="图书状态">
           <el-select v-model="reserveQueryForm.bookStatus" placeholder="请选择图书状态">
             <el-option label="全部" value=""></el-option>
@@ -115,9 +125,9 @@
           <el-button @click="resetReserveQuery">重置</el-button>
         </el-form-item>
       </el-form>
-      <!-- 预定列表：同图书ID去重 + 固定高度 -->
+      <!-- 预定列表（保持不变） -->
       <el-table
-          :data="uniqueReservationList"
+          :data="reservationList.content || []"
           border
           stripe
           v-loading="reserveLoading"
@@ -147,7 +157,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <!-- 预定分页 -->
+      <!-- 预定分页（保持不变） -->
       <el-pagination
           v-if="reservationList.total > 0"
           @size-change="handleReserveSizeChange"
@@ -156,16 +166,15 @@
           :page-sizes="[10, 20, 50]"
           :page-size="reserveQueryForm.pageSize"
           layout="total, sizes, prev, pager, next, jumper"
-          :total="uniqueReservationList.length"
+          :total="reservationList.total"
           style="margin-top: 20px; text-align: right"
       ></el-pagination>
     </el-card>
-    <!-- 罚款管理 -->
+    <!-- 罚款管理（核心修改：分馆管理员禁用分馆筛选） -->
     <el-card style="margin-top: 20px;">
       <div class="card-header">
         <h2>罚款管理</h2>
       </div>
-      <!-- 罚款筛选条件 -->
       <el-form :model="fineQueryForm" inline class="query-form" @submit.prevent="getFineList">
         <el-form-item label="用户名称">
           <el-input v-model="fineQueryForm.userName" placeholder="请输入用户名称"></el-input>
@@ -184,7 +193,7 @@
           <el-button @click="resetFineQuery">重置</el-button>
         </el-form-item>
       </el-form>
-      <!-- 罚款列表：固定高度 -->
+      <!-- 罚款列表（保持不变） -->
       <el-table
           :data="fineList.content || []"
           border
@@ -220,7 +229,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <!-- 罚款分页 -->
+      <!-- 罚款分页（保持不变） -->
       <el-pagination
           v-if="fineList.total > 0"
           @size-change="handleFineSizeChange"
@@ -233,7 +242,7 @@
           style="margin-top: 20px; text-align: right"
       ></el-pagination>
     </el-card>
-    <!-- 预定队列弹窗 -->
+    <!-- 预定队列弹窗（保持不变） -->
     <el-dialog v-model="queueDialogVisible" title="图书预定队列（按预定时间排序）" width="700px">
       <el-table
           :data="reservationQueueList.content || []"
@@ -260,7 +269,7 @@
                 @click="handleQueueComplete(scope.row.id)"
                 v-if="scope.row.status === 'PENDING'"
             >
-              标记完成（已完成）
+              标记完成（可借阅）
             </el-button>
             <el-button
                 type="danger"
@@ -307,31 +316,45 @@ import {
   getAllFines,
   updateFineStatus as apiUpdateFineStatus
 } from '@/api/fines'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// 核心修改：分馆管理员标识和当前分馆ID
+const isBranchAdmin = computed(() => userStore.isBranchAdmin)
+const currentBranchId = computed(() => userStore.userInfo?.branchId)
+const currentBranchName = computed(() => {
+  const branch = branchList.value.find(item => item.branchId === currentBranchId.value)
+  return branch ? branch.branchName : ''
+})
+
 // 公共数据
 const branchList = ref([])
 const loading = ref(false)
 const reserveLoading = ref(false)
 const fineLoading = ref(false)
-// 借阅记录数据
+
+// 借阅记录数据（默认分馆ID为当前管理员所属分馆）
 const borrowList = ref({ content: [], total: 0 })
 const queryForm = reactive({
   userName: '',
   bookName: '',
-  branchId: '',
+  branchId: isBranchAdmin.value ? currentBranchId.value : '', // 核心修改
   status: '',
   pageNum: 1,
   pageSize: 10
 })
-// 预定管理数据（修复图书状态查询参数）
+
+// 预定管理数据（默认分馆ID为当前管理员所属分馆）
 const reservationList = ref({ content: [], total: 0 })
 const reserveQueryForm = reactive({
   bookName: '',
-  branchId: '',
-  bookStatus: '', // 图书状态筛选字段（AVAILABLE/QUEUED）
+  branchId: isBranchAdmin.value ? currentBranchId.value : '', // 核心修改
+  bookStatus: '',
   pageNum: 1,
   pageSize: 10
 })
-// 罚款管理数据
+
+// 罚款管理数据（保持不变，后端关联筛选）
 const fineList = ref({ content: [], total: 0 })
 const fineQueryForm = reactive({
   userName: '',
@@ -340,21 +363,10 @@ const fineQueryForm = reactive({
   pageNum: 1,
   pageSize: 10
 })
-// 预定队列弹窗
+
+// 预定队列弹窗（保持不变）
 const queueDialogVisible = ref(false)
 const reservationQueueList = ref({ content: [] })
-
-// 核心修改1：同图书ID去重，只保留一条记录（按bookId唯一）
-const uniqueReservationList = computed(() => {
-  const content = reservationList.value.content || []
-  const bookMap = new Map()
-  content.forEach(item => {
-    if (!bookMap.has(item.bookId)) {
-      bookMap.set(item.bookId, item)
-    }
-  })
-  return Array.from(bookMap.values())
-})
 
 // 初始化
 onMounted(() => {
@@ -364,7 +376,7 @@ onMounted(() => {
   getFineList()
 })
 
-// 加载分馆列表
+// 加载分馆列表（保持不变）
 const loadBranchList = async () => {
   try {
     const res = await getAllBranches()
@@ -387,12 +399,15 @@ const getBorrowList = async () => {
     loading.value = false
   }
 }
+// 重置查询（分馆管理员保留当前分馆）
 const resetQuery = () => {
   queryForm.userName = ''
   queryForm.bookName = ''
-  queryForm.branchId = ''
   queryForm.status = ''
   queryForm.pageNum = 1
+  if (!isBranchAdmin.value) {
+    queryForm.branchId = ''
+  }
   getBorrowList()
 }
 const handleSizeChange = (val) => {
@@ -454,32 +469,30 @@ const getStatusText = (status) => {
 
 // ========== 预定管理 ==========
 const getReservationList = async () => {
-  reserveLoading.value = true;
+  reserveLoading.value = true
   try {
     const params = {
-      // 分页参数转换（前端pageNum从1开始，后端Pageable从0开始）
-      page: reserveQueryForm.pageNum - 1,
-      size: reserveQueryForm.pageSize,
-      // 筛选参数：仅传递非空值，避免后端处理无效参数
-      bookName: reserveQueryForm.bookName || undefined,
+      ...reserveQueryForm,
       branchId: reserveQueryForm.branchId || undefined,
-      bookStatus: reserveQueryForm.bookStatus || undefined, // 关键：传递图书状态参数
-      sort: 'bookId,asc'
-    };
-    // 调用后端接口（确保接口路径和参数名与后端一致）
-    const res = await getAllReservations(params);
-    reservationList.value = res.data;
+      sort: 'bookId,asc',
+      bookStatus: reserveQueryForm.bookStatus || undefined
+    }
+    const res = await getAllReservations(params)
+    reservationList.value = res.data
   } catch (err) {
-    ElMessage.error('获取预定记录失败：' + (err.response?.data?.message || err.message));
+    ElMessage.error('获取预定记录失败：' + (err.response?.data?.message || err.message))
   } finally {
-    reserveLoading.value = false;
+    reserveLoading.value = false
   }
-};
+}
+// 重置预定查询（分馆管理员保留当前分馆）
 const resetReserveQuery = () => {
   reserveQueryForm.bookName = ''
-  reserveQueryForm.branchId = ''
-  reserveQueryForm.bookStatus = '' // 重置图书状态
+  reserveQueryForm.bookStatus = ''
   reserveQueryForm.pageNum = 1
+  if (!isBranchAdmin.value) {
+    reserveQueryForm.branchId = ''
+  }
   getReservationList()
 }
 const handleReserveSizeChange = (val) => {
@@ -493,7 +506,6 @@ const handleReserveCurrentChange = (val) => {
 const viewReservationQueue = async (bookId) => {
   try {
     const res = await getBookReservationQueue(bookId)
-    // 按预定时间升序排序（前端二次确认，确保顺序）
     res.data.content = res.data.content.sort((a, b) => new Date(a.reserveTime) - new Date(b.reserveTime))
     reservationQueueList.value = res.data
     queueDialogVisible.value = true
@@ -501,15 +513,12 @@ const viewReservationQueue = async (bookId) => {
     ElMessage.error('获取预定队列失败：' + (err.response?.data?.message || err.message))
   }
 }
-// 标记完成：触发状态流转
 const handleQueueComplete = async (reservationId) => {
   try {
-    await ElMessageBox.confirm('确认执行该操作吗？', '操作确认', { type: 'warning' })
+    await ElMessageBox.confirm('确认执行该操作吗？', '操作确认', {type: 'warning'})
     await updateReservationStatus(reservationId)
     ElMessage.success('操作成功')
-    // 刷新队列，后端会自动更新下一个预定状态
-    const bookId = reservationQueueList.value.content[0]?.bookId
-    viewReservationQueue(bookId)
+    viewReservationQueue(reservationQueueList.content[0]?.bookId)
     getReservationList()
   } catch (err) {
     if (err !== 'cancel') {
@@ -517,15 +526,12 @@ const handleQueueComplete = async (reservationId) => {
     }
   }
 }
-// 取消预定：触发状态流转
 const handleQueueCancel = async (reservationId) => {
   try {
-    await ElMessageBox.confirm('确认取消该预定吗？', '取消确认', { type: 'warning' })
+    await ElMessageBox.confirm('确认取消该预定吗？', '取消确认', {type: 'warning'})
     await apiCancelReservation(reservationId)
     ElMessage.success('取消成功')
-    // 刷新队列，后端会自动更新下一个预定状态
-    const bookId = reservationQueueList.value.content[0]?.bookId
-    viewReservationQueue(bookId)
+    viewReservationQueue(reservationQueueList.content[0]?.bookId)
     getReservationList()
   } catch (err) {
     if (err !== 'cancel') {
@@ -533,23 +539,32 @@ const handleQueueCancel = async (reservationId) => {
     }
   }
 }
-// 状态显示
 const getReserveStatusText = (status) => {
   switch (status) {
-    case 'PENDING': return '等待中'
-    case 'READY': return '可借阅'
-    case 'CANCELLED': return '已取消'
-    case 'COMPLETED': return '已完成'
-    default: return status
+    case 'PENDING':
+      return '等待中'
+    case 'READY':
+      return '可借阅'
+    case 'CANCELLED':
+      return '已取消'
+    case 'COMPLETED':
+      return '已完成'
+    default:
+      return status
   }
 }
 const getReserveStatusTagType = (status) => {
   switch (status) {
-    case 'PENDING': return 'info'
-    case 'READY': return 'primary'
-    case 'COMPLETED': return 'success'
-    case 'CANCELLED': return 'danger'
-    default: return 'default'
+    case 'PENDING':
+      return 'info'
+    case 'READY':
+      return 'primary'
+    case 'COMPLETED':
+      return 'success'
+    case 'CANCELLED':
+      return 'danger'
+    default:
+      return 'default'
   }
 }
 
@@ -559,7 +574,8 @@ const getFineList = async () => {
   try {
     const params = {
       ...fineQueryForm,
-      payStatus: fineQueryForm.payStatus || undefined
+      payStatus: fineQueryForm.payStatus || undefined,
+      branchId: isBranchAdmin.value ? currentBranchId.value : undefined // 核心修改：传递当前分馆ID
     }
     const res = await getAllFines(params)
     fineList.value = res.data
@@ -587,7 +603,7 @@ const handleFineCurrentChange = (val) => {
 const updateFineStatus = async (fineId, status) => {
   try {
     const statusText = status === 'paid' ? '已支付' : '未支付'
-    await ElMessageBox.confirm(`确认标记为${statusText}吗？`, '状态确认', { type: 'warning' })
+    await ElMessageBox.confirm(`确认标记为${statusText}吗？`, '状态确认', {type: 'warning'})
     await apiUpdateFineStatus(fineId, status)
     ElMessage.success(`标记为${statusText}成功`)
     getFineList()
@@ -598,36 +614,52 @@ const updateFineStatus = async (fineId, status) => {
   }
 }
 
-// 获取分馆名称
+// 获取分馆名称（保持不变）
 const getBranchName = (branchId) => {
   const branch = branchList.value.find(item => item.branchId === branchId)
   return branch ? branch.branchName : ''
 }
 </script>
 <style scoped>
-.borrow-management { padding: 20px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.query-form { margin-bottom: 20px; }
-.text-red { color: #f56c6c; font-weight: 500; }
-.el-dialog .el-table { width: 100%; }
-.el-button--link { color: #409eff; }
-.el-button--link:hover { color: #66b1ff; }
+.borrow-management {
+  padding: 20px;
+}
 
-/* 固定表格高度 */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.query-form {
+  margin-bottom: 20px;
+}
+
+.text-red {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+.el-dialog .el-table {
+  width: 100%;
+}
+
 .fixed-height-table {
-  height: 400px; /* 固定高度 */
-  overflow-y: auto; /* 垂直滚动 */
+  max-height: 400px;
+  overflow-y: auto;
   overflow-x: hidden;
 }
 
-/* 优化滚动条样式 */
 .fixed-height-table::-webkit-scrollbar {
   width: 6px;
 }
+
 .fixed-height-table::-webkit-scrollbar-thumb {
   background-color: #c0c4cc;
   border-radius: 3px;
 }
+
 .fixed-height-table::-webkit-scrollbar-track {
   background-color: #f5f5f5;
 }

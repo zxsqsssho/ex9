@@ -5,49 +5,47 @@
         <h2>图书管理</h2>
         <el-button type="primary" @click="openAddDialog">新增图书</el-button>
       </div>
-      <!-- 筛选条件（核心修改：拆分两行布局） -->
-      <el-form :model="queryForm" class="query-form" @submit.prevent="getBookList">
-        <!-- 第一行：图书名称、作者、ISBN、所属分馆 -->
-        <div class="query-row">
-          <el-form-item label="图书名称">
-            <el-input v-model="queryForm.bookName" placeholder="请输入图书名称"></el-input>
-          </el-form-item>
-          <el-form-item label="作者">
-            <el-input v-model="queryForm.author" placeholder="请输入作者"></el-input>
-          </el-form-item>
-          <el-form-item label="ISBN">
-            <el-input v-model="queryForm.isbn" placeholder="请输入ISBN"></el-input>
-          </el-form-item>
-          <el-form-item label="所属分馆">
-            <el-select v-model="queryForm.branchId" placeholder="请选择分馆">
-              <el-option v-for="branch in branchList" :key="branch.branchId" :label="branch.branchName" :value="branch.branchId"></el-option>
-            </el-select>
-          </el-form-item>
-        </div>
-        <!-- 第二行：图书类型、图书状态、查询按钮、重置按钮（核心调整行） -->
-        <div class="query-row" style="margin-top: 10px;">
-          <el-form-item label="图书类型">
-            <el-select v-model="queryForm.bookType" placeholder="请选择类型">
-              <el-option label="技术书籍" value="技术书籍" />
-              <el-option label="教材" value="教材" />
-              <el-option label="古典文学" value="古典文学" />
-              <el-option label="教辅" value="教辅" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="图书状态">
-            <el-select v-model="queryForm.status" placeholder="请选择状态">
-              <el-option label="全部" value="" />
-              <el-option label="正常可借" value="AVAILABLE" />
-              <el-option label="缺货" value="OUT_OF_STOCK" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="getBookList">查询</el-button>
-          </el-form-item>
-          <el-form-item>
-            <el-button @click="resetQuery">重置</el-button>
-          </el-form-item>
-        </div>
+      <!-- 筛选条件（核心修改：分馆管理员禁用分馆筛选） -->
+      <el-form :model="queryForm" inline class="query-form" @submit.prevent="getBookList">
+        <el-form-item label="图书名称">
+          <el-input v-model="queryForm.bookName" placeholder="请输入图书名称"></el-input>
+        </el-form-item>
+        <el-form-item label="作者">
+          <el-input v-model="queryForm.author" placeholder="请输入作者"></el-input>
+        </el-form-item>
+        <el-form-item label="ISBN">
+          <el-input v-model="queryForm.isbn" placeholder="请输入ISBN"></el-input>
+        </el-form-item>
+        <!-- 核心修改：分馆管理员禁用分馆选择，默认当前分馆 -->
+        <el-form-item label="所属分馆" v-if="!isBranchAdmin">
+          <el-select v-model="queryForm.branchId" placeholder="请选择分馆">
+            <el-option v-for="branch in branchList" :key="branch.branchId" :label="branch.branchName" :value="branch.branchId"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属分馆" v-else>
+          <el-select v-model="queryForm.branchId" placeholder="当前分馆" disabled>
+            <el-option :key="currentBranchId" :label="currentBranchName" :value="currentBranchId"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="图书类型">
+          <el-select v-model="queryForm.bookType" placeholder="请选择类型">
+            <el-option label="技术书籍" value="技术书籍" />
+            <el-option label="教材" value="教材" />
+            <el-option label="古典文学" value="古典文学" />
+            <el-option label="教辅" value="教辅" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="图书状态">
+          <el-select v-model="queryForm.status" placeholder="请选择状态">
+            <el-option label="全部" value="" />
+            <el-option label="正常可借" value="AVAILABLE" />
+            <el-option label="缺货" value="OUT_OF_STOCK" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="getBookList">查询</el-button>
+          <el-button @click="resetQuery">重置</el-button>
+        </el-form-item>
       </el-form>
       <!-- 图书列表（保持不变） -->
       <el-table :data="bookList.content || []" border stripe v-loading="loading">
@@ -110,8 +108,9 @@
         <el-form-item label="分类" prop="category">
           <el-input v-model="form.category" placeholder="请输入图书分类"></el-input>
         </el-form-item>
+        <!-- 弹窗中分馆选择：分馆管理员默认当前分馆，禁用修改 -->
         <el-form-item label="所属分馆" prop="branchId">
-          <el-select v-model="form.branchId" placeholder="请选择分馆">
+          <el-select v-model="form.branchId" placeholder="请选择分馆" :disabled="isBranchAdmin">
             <el-option v-for="branch in branchList" :key="branch.branchId" :label="branch.branchName" :value="branch.branchId"></el-option>
           </el-select>
         </el-form-item>
@@ -138,10 +137,13 @@
   </div>
 </template>
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getBranchList } from '@/api/branch'
 import { addBook, updateBook, deleteBook, searchBooks } from '@/api/book'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
 const formRef = ref(null)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -149,45 +151,56 @@ const loading = ref(false)
 const bookList = ref({ content: [], total: 0 })
 const branchList = ref([])
 const total = ref(0)
-// 查询条件（保持不变）
+
+// 核心修改：分馆管理员默认当前分馆ID，禁用筛选
+const isBranchAdmin = computed(() => userStore.isBranchAdmin)
+const currentBranchId = computed(() => userStore.userInfo?.branchId)
+const currentBranchName = computed(() => {
+  const branch = branchList.value.find(item => item.branchId === currentBranchId.value)
+  return branch ? branch.branchName : ''
+})
+
+// 查询条件（默认分馆ID为当前管理员所属分馆）
 const queryForm = reactive({
   bookName: '',
   author: '',
   isbn: '',
-  branchId: '',
+  branchId: isBranchAdmin.value ? currentBranchId.value : '', // 核心修改
   bookType: '',
   status: '',
   pageNum: 1,
   pageSize: 10
 })
-// 表单数据（保持不变）
+
+// 表单数据（分馆管理员默认当前分馆）
 const form = reactive({
   bookId: '',
   bookName: '',
   author: '',
   isbn: '',
   category: '',
-  branchId: '',
+  branchId: isBranchAdmin.value ? currentBranchId.value : '', // 核心修改
   bookType: '技术书籍',
   totalNum: 0,
   availableNum: 0,
   status: 'AVAILABLE'
 })
+
 // 表单校验规则（保持不变）
 const formRules = reactive({
-  bookName: [{required: true, message: '请输入图书名称', trigger: 'blur'}],
-  author: [{required: true, message: '请输入作者', trigger: 'blur'}],
-  isbn: [{required: true, message: '请输入ISBN', trigger: 'blur'}],
-  category: [{required: true, message: '请输入分类', trigger: 'blur'}],
-  branchId: [{required: true, message: '请选择分馆', trigger: 'change'}],
-  bookType: [{required: true, message: '请选择图书类型', trigger: 'change'}],
+  bookName: [{ required: true, message: '请输入图书名称', trigger: 'blur' }],
+  author: [{ required: true, message: '请输入作者', trigger: 'blur' }],
+  isbn: [{ required: true, message: '请输入ISBN', trigger: 'blur' }],
+  category: [{ required: true, message: '请输入分类', trigger: 'blur' }],
+  branchId: [{ required: true, message: '请选择分馆', trigger: 'change' }],
+  bookType: [{ required: true, message: '请选择图书类型', trigger: 'change' }],
   totalNum: [
-    {required: true, message: '请输入总数量', trigger: 'blur'},
-    {type: 'number', min: 1, message: '总数量必须大于0', trigger: 'blur'}
+    { required: true, message: '请输入总数量', trigger: 'blur' },
+    { type: 'number', min: 1, message: '总数量必须大于0', trigger: 'blur' }
   ],
   availableNum: [
-    {required: true, message: '请输入可借数量', trigger: 'blur'},
-    {type: 'number', min: 0, message: '可借数量不能为负数', trigger: 'blur'},
+    { required: true, message: '请输入可借数量', trigger: 'blur' },
+    { type: 'number', min: 0, message: '可借数量不能为负数', trigger: 'blur' },
     {
       validator: (rule, value, callback) => {
         if (form.totalNum > 0 && value > form.totalNum) {
@@ -200,11 +213,17 @@ const formRules = reactive({
     }
   ]
 })
-// 初始化（保持不变）
+
+// 初始化：加载分馆列表和图书列表
 onMounted(() => {
   loadBranchList()
+  // 核心修改：分馆管理员默认查询当前分馆
+  if (isBranchAdmin.value) {
+    queryForm.branchId = currentBranchId.value
+  }
   getBookList()
 })
+
 // 加载分馆列表（保持不变）
 const loadBranchList = async () => {
   try {
@@ -214,7 +233,8 @@ const loadBranchList = async () => {
     ElMessage.error('获取分馆列表失败')
   }
 }
-// 获取图书列表（保持不变）
+
+// 多条件查询图书（保持不变）
 const getBookList = async () => {
   loading.value = true
   try {
@@ -237,18 +257,23 @@ const getBookList = async () => {
     loading.value = false
   }
 }
-// 重置查询（保持不变）
+
+// 重置查询条件（核心修改：分馆管理员保留当前分馆）
 const resetQuery = () => {
   queryForm.bookName = ''
   queryForm.author = ''
   queryForm.isbn = ''
-  queryForm.branchId = ''
   queryForm.bookType = ''
   queryForm.status = ''
   queryForm.pageNum = 1
+  // 分馆管理员不重置分馆ID
+  if (!isBranchAdmin.value) {
+    queryForm.branchId = ''
+  }
   getBookList()
 }
-// 分页处理（保持不变）
+
+// 其他方法保持不变
 const handleSizeChange = (val) => {
   queryForm.pageSize = val
   getBookList()
@@ -257,7 +282,6 @@ const handleCurrentChange = (val) => {
   queryForm.pageNum = val
   getBookList()
 }
-// 打开新增弹窗（保持不变）
 const openAddDialog = () => {
   isEdit.value = false
   form.bookId = ''
@@ -265,14 +289,13 @@ const openAddDialog = () => {
   form.author = ''
   form.isbn = ''
   form.category = ''
-  form.branchId = ''
+  form.branchId = isBranchAdmin.value ? currentBranchId.value : '' // 核心修改
   form.bookType = '技术书籍'
   form.totalNum = 0
   form.availableNum = 0
   form.status = 'AVAILABLE'
   dialogVisible.value = true
 }
-// 打开编辑弹窗（保持不变）
 const openEditDialog = (row) => {
   isEdit.value = true
   form.bookId = row.bookId
@@ -287,7 +310,6 @@ const openEditDialog = (row) => {
   form.status = row.status
   dialogVisible.value = true
 }
-// 提交表单（保持不变）
 const submitForm = async () => {
   try {
     await formRef.value.validate()
@@ -305,7 +327,6 @@ const submitForm = async () => {
     ElMessage.error('操作失败：' + (err.response?.data?.message || err.message))
   }
 }
-// 删除图书（保持不变）
 const handleDeleteBook = async (bookId) => {
   try {
     await ElMessageBox.confirm(
@@ -326,7 +347,6 @@ const handleDeleteBook = async (bookId) => {
     }
   }
 }
-// 获取分馆名称（保持不变）
 const getBranchName = (branchId) => {
   const branch = branchList.value.find(item => item.branchId === branchId)
   return branch ? branch.branchName : ''
@@ -344,24 +364,7 @@ const getBranchName = (branchId) => {
   margin-bottom: 20px;
 }
 
-/* 核心修改：新增查询行样式，实现横向排列并支持换行 */
 .query-form {
   margin-bottom: 20px;
-}
-
-.query-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.query-row .el-form-item {
-  margin-bottom: 0;
-}
-
-/* 保持原有样式不变 */
-.el-table {
-  width: 100%;
 }
 </style>

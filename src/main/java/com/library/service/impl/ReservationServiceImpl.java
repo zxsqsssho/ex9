@@ -34,7 +34,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final EmailNotificationService emailNotificationService;
     private final BranchesRepository branchesRepository;
 
-    // 预定图书逻辑（保持不变，确保参数正确接收）
+    // 预定图书（保持不变，强制关联当前分馆）
     @Override
     @Transactional
     public ApiResponse<?> reserveBook(Long bookId, Integer branchId) {
@@ -43,6 +43,10 @@ public class ReservationServiceImpl implements ReservationService {
                 .orElseThrow(() -> new EntityNotFoundException("用户不存在"));
         Books book = booksRepository.findById(bookId)
                 .orElseThrow(() -> new EntityNotFoundException("图书不存在"));
+        // 分馆管理员只能预定本馆图书
+        if (authService.isBranchAdmin() && !book.getBranchId().equals(authService.getCurrentUserBranchId())) {
+            return ApiResponse.error(403, "无权预定其他分馆的图书");
+        }
         if (!book.getBranchId().equals(branchId)) {
             return ApiResponse.error(400, "图书不属于该分馆");
         }
@@ -83,129 +87,31 @@ public class ReservationServiceImpl implements ReservationService {
         return ApiResponse.success("预定成功，预定有效期7天", reservation);
     }
 
-    // 取消预定逻辑（保持不变）
+    // 取消预定（保持不变）
     @Override
     @Transactional
     public ApiResponse<?> cancelReservation(Long reservationId) {
         Long userId = authService.getCurrentUserId();
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new EntityNotFoundException("预定记录不存在"));
+        // 分馆管理员只能取消本馆预定
+        if (authService.isBranchAdmin() && !reservation.getBranchId().equals(authService.getCurrentUserBranchId())) {
+            return ApiResponse.error(403, "无权取消其他分馆的预定");
+        }
         if (!reservation.getUserId().equals(userId) && !authService.isSystemAdmin() && !authService.isBranchAdmin()) {
             return ApiResponse.error(403, "无权取消他人的预定");
         }
+        // 状态对齐：已取消或已完成不可取消
         if (reservation.getStatus() == Reservation.ReservationStatus.CANCELLED ||
                 reservation.getStatus() == Reservation.ReservationStatus.COMPLETED) {
             return ApiResponse.error(400, "该预定已取消或已完成");
         }
         reservation.setStatus(Reservation.ReservationStatus.CANCELLED);
         reservationRepository.save(reservation);
-        nextReservationToReady(reservation.getBookId(), reservation.getBranchId());
         return ApiResponse.success("取消预定成功");
     }
 
-    // 完成预定逻辑（保持不变）
-    @Override
-    @Transactional
-    public ApiResponse<?> completeReservation(Long reservationId) {
-        Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new EntityNotFoundException("预定记录不存在"));
-        Long bookId = reservation.getBookId();
-        Integer branchId = reservation.getBranchId();
-
-        switch (reservation.getStatus()) {
-            case PENDING:
-                reservation.setStatus(Reservation.ReservationStatus.READY);
-                break;
-            case READY:
-                reservation.setStatus(Reservation.ReservationStatus.COMPLETED);
-                Books book = booksRepository.findById(bookId).orElseThrow();
-                if (book.getAvailableNum() > 0) {
-                    nextReservationToReady(bookId, branchId);
-                }
-                break;
-            default:
-                return ApiResponse.error(400, "当前状态不支持该操作");
-        }
-        reservationRepository.save(reservation);
-        return ApiResponse.success("操作成功", reservation);
-    }
-
-    // 激活下一个预定（保持不变）
-    private void nextReservationToReady(Long bookId, Integer branchId) {
-        Books book = booksRepository.findById(bookId)
-                .orElseThrow(() -> new EntityNotFoundException("图书不存在"));
-        int availableNum = book.getAvailableNum();
-
-        List<Reservation> pendingReservations = reservationRepository
-                .findByBookIdAndStatusOrderByReserveTimeAsc(bookId, Reservation.ReservationStatus.PENDING);
-        if (pendingReservations.isEmpty()) {
-            log.info("图书{}（分馆{}）无后续预定", bookId, branchId);
-            return;
-        }
-
-        int assignCount = availableNum > 0 ? availableNum : 1;
-        int assigned = 0;
-        for (Reservation reservation : pendingReservations) {
-            if (assigned >= assignCount) {
-                break;
-            }
-            reservation.setStatus(Reservation.ReservationStatus.READY);
-            reservationRepository.save(reservation);
-            emailNotificationService.notifyReservationAvailable(reservation.getId());
-            log.info("图书{}（分馆{}）的预定{}已转为可借阅状态",
-                    bookId, branchId, reservation.getId());
-            assigned++;
-        }
-    }
-
-    // 获取图书预定队列（保持不变）
-    @Override
-    public ApiResponse<?> getBookReservationQueue(Long bookId) {
-        autoCancelExpiredReservations();
-
-        Page<Reservation> reservations = reservationRepository.findByBookIdOrderByReserveTimeAsc(
-                bookId, PageRequest.of(0, 100));
-        List<Reservation> reservationList = reservations.getContent();
-
-        Books book = booksRepository.findById(bookId).orElseThrow();
-        int availableNum = book.getAvailableNum();
-        int readyCount = 0;
-
-        for (Reservation reservation : reservationList) {
-            if (reservation.getStatus() == Reservation.ReservationStatus.PENDING) {
-                if (readyCount < availableNum) {
-                    reservation.setStatus(Reservation.ReservationStatus.READY);
-                    reservationRepository.save(reservation);
-                    readyCount++;
-                } else {
-                    break;
-                }
-            }
-        }
-
-        Page<Reservation> updatedReservations = reservationRepository.findByBookIdOrderByReserveTimeAsc(
-                bookId, PageRequest.of(0, 100));
-
-        List<Map<String, Object>> queueList = updatedReservations.stream().map(reservation -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", reservation.getId());
-            map.put("bookId", reservation.getBookId());
-            User user = userRepository.findById(reservation.getUserId()).orElse(null);
-            map.put("userRealName", user != null ? user.getRealName() : "未知用户");
-            map.put("reserveTime", reservation.getReserveTime());
-            map.put("expiryTime", reservation.getExpiryTime());
-            map.put("status", reservation.getStatus());
-            map.put("branchId", reservation.getBranchId());
-            return map;
-        }).collect(Collectors.toList());
-
-        Page<Map<String, Object>> responsePage = new PageImpl<>(
-                queueList, PageRequest.of(0, 100), updatedReservations.getTotalElements()
-        );
-        return ApiResponse.success(responsePage);
-    }
-
-    // 定时取消过期预定（保持不变）
+    // 定时任务：每天凌晨2点自动取消过期的等待中预定（保持不变）
     @Scheduled(cron = "0 0 2 * * ?")
     @Transactional
     @Override
@@ -218,20 +124,62 @@ public class ReservationServiceImpl implements ReservationService {
         }
         reservationRepository.saveAll(expiredReservations);
         log.info("自动取消过期预定 {} 条", expiredReservations.size());
+    }
 
-        expiredReservations.stream()
-                .map(Reservation::getBookId)
-                .distinct()
-                .forEach(bookId -> {
-                    Integer branchId = expiredReservations.stream()
-                            .filter(r -> r.getBookId().equals(bookId))
-                            .findFirst()
-                            .map(Reservation::getBranchId)
-                            .orElse(null);
-                    if (branchId != null) {
-                        nextReservationToReady(bookId, branchId);
-                    }
-                });
+    // 查看图书预定队列（核心修改：分馆管理员仅查本馆）
+    @Override
+    public ApiResponse<?> getBookReservationQueue(Long bookId) {
+        autoCancelExpiredReservations();
+        // 分馆管理员只能查看本馆图书队列
+        if (authService.isBranchAdmin()) {
+            Books book = booksRepository.findById(bookId).orElseThrow(() -> new EntityNotFoundException("图书不存在"));
+            if (!book.getBranchId().equals(authService.getCurrentUserBranchId())) {
+                return ApiResponse.error(403, "无权查看其他分馆的预定队列");
+            }
+        }
+        Page<Reservation> reservations = reservationRepository.findByBookIdOrderByReserveTimeAsc(
+                bookId, PageRequest.of(0, 100));
+        List<Map<String, Object>> queueList = reservations.stream().map(reservation -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", reservation.getId());
+            map.put("bookId", reservation.getBookId());
+            User user = userRepository.findById(reservation.getUserId()).orElse(null);
+            map.put("userRealName", user != null ? user.getRealName() : "未知用户");
+            map.put("reserveTime", reservation.getReserveTime());
+            map.put("expiryTime", reservation.getExpiryTime());
+            map.put("status", reservation.getStatus());
+            map.put("branchId", reservation.getBranchId());
+            return map;
+        }).collect(Collectors.toList());
+        Page<Map<String, Object>> responsePage = new PageImpl<>(
+                queueList, PageRequest.of(0, 100), reservations.getTotalElements()
+        );
+        return ApiResponse.success(responsePage);
+    }
+
+    // 完成预定（保持不变）
+    @Override
+    @Transactional
+    public ApiResponse<?> completeReservation(Long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new EntityNotFoundException("预定记录不存在"));
+        // 分馆管理员只能操作本馆预定
+        if (authService.isBranchAdmin() && !reservation.getBranchId().equals(authService.getCurrentUserBranchId())) {
+            return ApiResponse.error(403, "无权操作其他分馆的预定");
+        }
+        // 状态流转对齐数据库：PENDING→READY，READY→COMPLETED
+        switch (reservation.getStatus()) {
+            case PENDING:
+                reservation.setStatus(Reservation.ReservationStatus.READY);
+                break;
+            case READY:
+                reservation.setStatus(Reservation.ReservationStatus.COMPLETED);
+                break;
+            default:
+                return ApiResponse.error(400, "当前状态不支持该操作");
+        }
+        reservationRepository.save(reservation);
+        return ApiResponse.success("操作成功", reservation);
     }
 
     @Override
@@ -240,6 +188,7 @@ public class ReservationServiceImpl implements ReservationService {
         return completeReservation(reservationId);
     }
 
+    // 我的预定记录（保持不变）
     @Override
     public ApiResponse<?> getMyReservations(String status, Pageable pageable) {
         Long userId = authService.getCurrentUserId();
@@ -270,9 +219,11 @@ public class ReservationServiceImpl implements ReservationService {
             dto.setExpiryTime(record.getExpiryTime());
             dto.setStatus(record.getStatus());
             dto.setBranchId(record.getBranchId());
+            // 关联图书信息
             Books book = booksRepository.findById(record.getBookId()).orElse(null);
             dto.setBookName(book != null ? book.getBookName() : "未知图书");
             dto.setAuthor(book != null ? book.getAuthor() : "未知作者");
+            // 关联分馆信息
             Branches branch = branchesRepository.findById(record.getBranchId()).orElse(null);
             dto.setBranchName(branch != null ? branch.getBranchName() : "未知分馆");
             return dto;
@@ -281,9 +232,7 @@ public class ReservationServiceImpl implements ReservationService {
         return ApiResponse.success(dtoPage);
     }
 
-    /**
-     * 核心修复：图书状态查询逻辑（恢复并优化bookStatus筛选）
-     */
+    // 管理员获取所有预定记录（核心修改：分馆管理员仅查本馆）
     @Override
     public ApiResponse<?> getAllReservations(
             String userName,
@@ -291,12 +240,14 @@ public class ReservationServiceImpl implements ReservationService {
             Integer branchId,
             String bookStatus,
             Pageable pageable) {
+        // 分馆管理员强制筛选本馆
+        if (authService.isBranchAdmin()) {
+            branchId = authService.getCurrentUserBranchId();
+        }
         autoCancelExpiredReservations();
         String finalUserName = StringUtils.hasText(userName) ? userName : null;
         String finalBookName = StringUtils.hasText(bookName) ? bookName : null;
         Reservation.ReservationStatus reserveStatus = null;
-
-        // 处理预定状态筛选（可选）
         if (StringUtils.hasText(bookStatus) && !"AVAILABLE".equals(bookStatus) && !"QUEUED".equals(bookStatus)) {
             try {
                 reserveStatus = Reservation.ReservationStatus.valueOf(bookStatus.trim().toUpperCase());
@@ -305,31 +256,25 @@ public class ReservationServiceImpl implements ReservationService {
                 reserveStatus = null;
             }
         }
-
         // 强制按bookId升序排序
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
-                Sort.by(Sort.Direction.ASC, "bookId", "reserveTime")
+                Sort.by(Sort.Direction.ASC, "bookId")
         );
-
         Page<Reservation> reservations;
-
-        // 核心：图书状态筛选逻辑（AVAILABLE/QUEUED）
+        // 图书状态筛选逻辑（AVAILABLE/QUEUED）
         if (StringUtils.hasText(bookStatus)) {
             switch (bookStatus) {
                 case "AVAILABLE":
-                    // 筛选图书可借（availableNum > 0）的预定记录
                     reservations = reservationRepository.findByBookStatusAvailable(
                             finalUserName, finalBookName, branchId, sortedPageable);
                     break;
                 case "QUEUED":
-                    // 筛选图书不可借（availableNum <= 0）的预定记录
                     reservations = reservationRepository.findByBookStatusQueued(
                             finalUserName, finalBookName, branchId, sortedPageable);
                     break;
                 default:
-                    // 其他状态按预定状态筛选
                     if (reserveStatus != null) {
                         reservations = getReservationsByCombination(finalUserName, finalBookName, branchId, reserveStatus, sortedPageable);
                     } else {
@@ -338,10 +283,8 @@ public class ReservationServiceImpl implements ReservationService {
                     break;
             }
         } else {
-            // 无图书状态筛选：按原有多条件组合查询
             reservations = getReservationsByCombination(finalUserName, finalBookName, branchId, reserveStatus, sortedPageable);
         }
-
         // 结果封装
         List<Map<String, Object>> result = reservations.stream().map(record -> {
             Map<String, Object> map = new HashMap<>();
@@ -359,14 +302,11 @@ public class ReservationServiceImpl implements ReservationService {
             map.put("expiryTime", record.getExpiryTime());
             return map;
         }).collect(Collectors.toList());
-
         Page<Map<String, Object>> responsePage = new PageImpl<>(result, sortedPageable, reservations.getTotalElements());
         return ApiResponse.success(responsePage);
     }
 
-    /**
-     * 辅助方法：多条件组合查询（复用原有逻辑）
-     */
+    // 辅助方法：多条件组合查询（保持不变）
     private Page<Reservation> getReservationsByCombination(
             String userName, String bookName, Integer branchId,
             Reservation.ReservationStatus status, Pageable pageable) {
@@ -386,5 +326,4 @@ public class ReservationServiceImpl implements ReservationService {
             return reservationRepository.findAll(pageable);
         }
     }
-
 }
