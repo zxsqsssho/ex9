@@ -1,4 +1,3 @@
-<!--frontend/src/views/admin/BookManagement.vue-->
 <template>
   <div class="book-management">
     <el-card>
@@ -6,34 +5,51 @@
         <h2>图书管理</h2>
         <el-button type="primary" @click="openAddDialog">新增图书</el-button>
       </div>
-      <!-- 筛选条件 -->
-      <el-form :model="queryForm" inline class="query-form" @submit.prevent="getBookList">
-        <el-form-item label="图书名称">
-          <el-input v-model="queryForm.bookName" placeholder="请输入图书名称"></el-input>
-        </el-form-item>
-        <el-form-item label="作者">
-          <el-input v-model="queryForm.author" placeholder="请输入作者"></el-input>
-        </el-form-item>
-        <el-form-item label="ISBN">
-          <el-input v-model="queryForm.isbn" placeholder="请输入ISBN"></el-input>
-        </el-form-item>
-        <el-form-item label="所属分馆">
-          <el-select v-model="queryForm.branchId" placeholder="请选择分馆">
-            <el-option v-for="branch in branchList" :key="branch.branchId" :label="branch.branchName" :value="branch.branchId"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="图书类型">
-          <el-select v-model="queryForm.bookType" placeholder="请选择类型">
-            <el-option label="图书" value="book"></el-option>
-            <el-option label="杂志" value="magazine"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="getBookList">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
+      <!-- 筛选条件（核心修改：拆分两行布局） -->
+      <el-form :model="queryForm" class="query-form" @submit.prevent="getBookList">
+        <!-- 第一行：图书名称、作者、ISBN、所属分馆 -->
+        <div class="query-row">
+          <el-form-item label="图书名称">
+            <el-input v-model="queryForm.bookName" placeholder="请输入图书名称"></el-input>
+          </el-form-item>
+          <el-form-item label="作者">
+            <el-input v-model="queryForm.author" placeholder="请输入作者"></el-input>
+          </el-form-item>
+          <el-form-item label="ISBN">
+            <el-input v-model="queryForm.isbn" placeholder="请输入ISBN"></el-input>
+          </el-form-item>
+          <el-form-item label="所属分馆">
+            <el-select v-model="queryForm.branchId" placeholder="请选择分馆">
+              <el-option v-for="branch in branchList" :key="branch.branchId" :label="branch.branchName" :value="branch.branchId"></el-option>
+            </el-select>
+          </el-form-item>
+        </div>
+        <!-- 第二行：图书类型、图书状态、查询按钮、重置按钮（核心调整行） -->
+        <div class="query-row" style="margin-top: 10px;">
+          <el-form-item label="图书类型">
+            <el-select v-model="queryForm.bookType" placeholder="请选择类型">
+              <el-option label="技术书籍" value="技术书籍" />
+              <el-option label="教材" value="教材" />
+              <el-option label="古典文学" value="古典文学" />
+              <el-option label="教辅" value="教辅" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="图书状态">
+            <el-select v-model="queryForm.status" placeholder="请选择状态">
+              <el-option label="全部" value="" />
+              <el-option label="正常可借" value="AVAILABLE" />
+              <el-option label="缺货" value="OUT_OF_STOCK" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="getBookList">查询</el-button>
+          </el-form-item>
+          <el-form-item>
+            <el-button @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </div>
       </el-form>
-      <!-- 图书列表 -->
+      <!-- 图书列表（保持不变） -->
       <el-table :data="bookList.content || []" border stripe v-loading="loading">
         <el-table-column prop="bookId" label="图书ID" width="80"></el-table-column>
         <el-table-column prop="bookName" label="图书名称" min-width="200"></el-table-column>
@@ -47,15 +63,15 @@
         </el-table-column>
         <el-table-column prop="bookType" label="类型" width="80">
           <template #default="scope">
-            {{ scope.row.bookType === 'book' ? '图书' : '杂志' }}
+            {{ scope.row.bookType }}
           </template>
         </el-table-column>
         <el-table-column prop="totalNum" label="总数量" width="80"></el-table-column>
         <el-table-column prop="availableNum" label="可借数量" width="80"></el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
-            <el-tag :type="scope.row.status === 'normal' ? 'success' : 'danger'">
-              {{ scope.row.status === 'normal' ? '正常可借' : '缺货' }}
+            <el-tag :type="scope.row.status === 'AVAILABLE' ? 'success' : 'danger'">
+              {{ scope.row.status === 'AVAILABLE' ? '正常可借' : '缺货' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -66,7 +82,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <!-- 分页 -->
+      <!-- 分页（保持不变） -->
       <el-pagination
           v-if="bookList.total > 0"
           @size-change="handleSizeChange"
@@ -79,7 +95,7 @@
           style="margin-top: 20px; text-align: right"
       ></el-pagination>
     </el-card>
-    <!-- 新增/编辑图书弹窗 -->
+    <!-- 新增/编辑图书弹窗（保持不变） -->
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑图书' : '新增图书'" width="600px">
       <el-form :model="form" :rules="formRules" ref="formRef" label-width="120px">
         <el-form-item label="图书名称" prop="bookName">
@@ -101,8 +117,10 @@
         </el-form-item>
         <el-form-item label="图书类型" prop="bookType">
           <el-select v-model="form.bookType" placeholder="请选择图书类型">
-            <el-option label="图书" value="book"></el-option>
-            <el-option label="杂志" value="magazine"></el-option>
+            <el-option label="技术书籍" value="技术书籍" />
+            <el-option label="教材" value="教材" />
+            <el-option label="古典文学" value="古典文学" />
+            <el-option label="教辅" value="教辅" />
           </el-select>
         </el-form-item>
         <el-form-item label="总数量" prop="totalNum">
@@ -120,7 +138,7 @@
   </div>
 </template>
 <script setup>
-import { ref, reactive, onMounted, getCurrentInstance } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getBranchList } from '@/api/branch'
 import { addBook, updateBook, deleteBook, searchBooks } from '@/api/book'
@@ -128,20 +146,21 @@ const formRef = ref(null)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const loading = ref(false)
-const bookList = ref({ content: [], total: 0 }) // 接收分页对象
+const bookList = ref({ content: [], total: 0 })
 const branchList = ref([])
 const total = ref(0)
-// 查询条件
+// 查询条件（保持不变）
 const queryForm = reactive({
   bookName: '',
   author: '',
   isbn: '',
   branchId: '',
   bookType: '',
+  status: '',
   pageNum: 1,
   pageSize: 10
 })
-// 表单数据
+// 表单数据（保持不变）
 const form = reactive({
   bookId: '',
   bookName: '',
@@ -149,27 +168,44 @@ const form = reactive({
   isbn: '',
   category: '',
   branchId: '',
-  bookType: 'book',
+  bookType: '技术书籍',
   totalNum: 0,
-  availableNum: 0
+  availableNum: 0,
+  status: 'AVAILABLE'
 })
-// 表单校验规则
+// 表单校验规则（保持不变）
 const formRules = reactive({
-  bookName: [{ required: true, message: '请输入图书名称', trigger: 'blur' }],
-  author: [{ required: true, message: '请输入作者', trigger: 'blur' }],
-  isbn: [{ required: true, message: '请输入ISBN', trigger: 'blur' }],
-  category: [{ required: true, message: '请输入分类', trigger: 'blur' }],
-  branchId: [{ required: true, message: '请选择分馆', trigger: 'change' }],
-  bookType: [{ required: true, message: '请选择图书类型', trigger: 'change' }],
-  totalNum: [{ required: true, message: '请输入总数量', trigger: 'blur' }, { type: 'number', min: 1, message: '总数量必须大于0', trigger: 'blur' }],
-  availableNum: [{ required: true, message: '请输入可借数量', trigger: 'blur' }, { type: 'number', min: 0, message: '可借数量不能为负数', trigger: 'blur' }]
+  bookName: [{required: true, message: '请输入图书名称', trigger: 'blur'}],
+  author: [{required: true, message: '请输入作者', trigger: 'blur'}],
+  isbn: [{required: true, message: '请输入ISBN', trigger: 'blur'}],
+  category: [{required: true, message: '请输入分类', trigger: 'blur'}],
+  branchId: [{required: true, message: '请选择分馆', trigger: 'change'}],
+  bookType: [{required: true, message: '请选择图书类型', trigger: 'change'}],
+  totalNum: [
+    {required: true, message: '请输入总数量', trigger: 'blur'},
+    {type: 'number', min: 1, message: '总数量必须大于0', trigger: 'blur'}
+  ],
+  availableNum: [
+    {required: true, message: '请输入可借数量', trigger: 'blur'},
+    {type: 'number', min: 0, message: '可借数量不能为负数', trigger: 'blur'},
+    {
+      validator: (rule, value, callback) => {
+        if (form.totalNum > 0 && value > form.totalNum) {
+          callback(new Error(`可借数量不能大于总数量（当前总数量：${form.totalNum}）`));
+        } else {
+          callback();
+        }
+      },
+      trigger: ['blur', 'change']
+    }
+  ]
 })
-// 初始化
+// 初始化（保持不变）
 onMounted(() => {
   loadBranchList()
   getBookList()
 })
-// 加载分馆列表
+// 加载分馆列表（保持不变）
 const loadBranchList = async () => {
   try {
     const res = await getBranchList()
@@ -178,40 +214,50 @@ const loadBranchList = async () => {
     ElMessage.error('获取分馆列表失败')
   }
 }
-// 获取图书列表
+// 获取图书列表（保持不变）
 const getBookList = async () => {
   loading.value = true
   try {
-    const res = await searchBooks(queryForm)
-    bookList.value = res.data // 后端返回Page对象
+    const queryParams = {
+      pageNum: queryForm.pageNum,
+      pageSize: queryForm.pageSize,
+      branchId: queryForm.branchId || undefined,
+      bookName: queryForm.bookName || undefined,
+      author: queryForm.author || undefined,
+      isbn: queryForm.isbn || undefined,
+      bookType: queryForm.bookType || undefined,
+      status: queryForm.status || undefined
+    }
+    const res = await searchBooks(queryParams)
+    bookList.value = res.data
     total.value = res.data.totalElements
   } catch (err) {
-    ElMessage.error('获取图书列表失败')
+    ElMessage.error('获取图书列表失败：' + (err.response?.data?.message || err.message))
   } finally {
     loading.value = false
   }
 }
-// 重置查询条件
+// 重置查询（保持不变）
 const resetQuery = () => {
   queryForm.bookName = ''
   queryForm.author = ''
   queryForm.isbn = ''
   queryForm.branchId = ''
   queryForm.bookType = ''
+  queryForm.status = ''
   queryForm.pageNum = 1
   getBookList()
 }
-// 分页大小改变
+// 分页处理（保持不变）
 const handleSizeChange = (val) => {
   queryForm.pageSize = val
   getBookList()
 }
-// 当前页改变
 const handleCurrentChange = (val) => {
   queryForm.pageNum = val
   getBookList()
 }
-// 打开新增弹窗
+// 打开新增弹窗（保持不变）
 const openAddDialog = () => {
   isEdit.value = false
   form.bookId = ''
@@ -220,12 +266,13 @@ const openAddDialog = () => {
   form.isbn = ''
   form.category = ''
   form.branchId = ''
-  form.bookType = 'book'
+  form.bookType = '技术书籍'
   form.totalNum = 0
   form.availableNum = 0
+  form.status = 'AVAILABLE'
   dialogVisible.value = true
 }
-// 打开编辑弹窗
+// 打开编辑弹窗（保持不变）
 const openEditDialog = (row) => {
   isEdit.value = true
   form.bookId = row.bookId
@@ -237,12 +284,14 @@ const openEditDialog = (row) => {
   form.bookType = row.bookType
   form.totalNum = row.totalNum
   form.availableNum = row.availableNum
+  form.status = row.status
   dialogVisible.value = true
 }
-// 提交表单
+// 提交表单（保持不变）
 const submitForm = async () => {
   try {
     await formRef.value.validate()
+    form.status = form.availableNum > 0 ? 'AVAILABLE' : 'OUT_OF_STOCK'
     if (isEdit.value) {
       await updateBook(form.bookId, form)
       ElMessage.success('编辑图书成功')
@@ -253,10 +302,10 @@ const submitForm = async () => {
     dialogVisible.value = false
     getBookList()
   } catch (err) {
-    ElMessage.error('操作失败')
+    ElMessage.error('操作失败：' + (err.response?.data?.message || err.message))
   }
 }
-// 删除图书
+// 删除图书（保持不变）
 const handleDeleteBook = async (bookId) => {
   try {
     await ElMessageBox.confirm(
@@ -273,11 +322,11 @@ const handleDeleteBook = async (bookId) => {
     getBookList()
   } catch (err) {
     if (err !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error('删除失败：' + (err.response?.data?.message || err.message))
     }
   }
 }
-// 获取分馆名称
+// 获取分馆名称（保持不变）
 const getBranchName = (branchId) => {
   const branch = branchList.value.find(item => item.branchId === branchId)
   return branch ? branch.branchName : ''
@@ -287,13 +336,32 @@ const getBranchName = (branchId) => {
 .book-management {
   padding: 20px;
 }
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
 }
+
+/* 核心修改：新增查询行样式，实现横向排列并支持换行 */
 .query-form {
   margin-bottom: 20px;
+}
+
+.query-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.query-row .el-form-item {
+  margin-bottom: 0;
+}
+
+/* 保持原有样式不变 */
+.el-table {
+  width: 100%;
 }
 </style>

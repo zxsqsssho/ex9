@@ -1,6 +1,10 @@
 package com.library.controller;
 
-import com.library.dto.*;
+import com.library.dto.ApiResponse;
+import com.library.dto.BookCreateDTO;
+import com.library.dto.BookListDTO;
+import com.library.dto.BookQueryDTO;
+import com.library.dto.BookUpdateDTO;
 import com.library.entity.Books;
 import com.library.entity.Branches;
 import com.library.repository.BranchesRepository;
@@ -48,9 +52,9 @@ public class BooksController {
                 queryDTO.getBookName(),
                 queryDTO.getAuthor(),
                 queryDTO.getIsbn(),
-                queryDTO.getCategory(),
-                queryDTO.getBookType(),
-                queryDTO.getStatus(),
+                queryDTO.getCategory(), // 修正：第5个参数为category
+                queryDTO.getBookType(), // 修正：第6个参数为bookType
+                queryDTO.getStatus(),  // 修正：第7个参数为status（可借状态）
                 pageable
         );
         booksPage.getContent().forEach(this::fillBranchName);
@@ -85,9 +89,9 @@ public class BooksController {
         book.setBookType(bookDTO.getBookType());
         book.setTotalNum(bookDTO.getTotalNum());
         book.setAvailableNum(bookDTO.getAvailableNum());
-        book.setStatus(bookDTO.getAvailableNum() > 0 ? "normal" : "out_of_stock");
+        // 核心修复：可借数量>0 → AVAILABLE，否则 → OUT_OF_STOCK
+        book.setStatus(bookDTO.getAvailableNum() > 0 ? "AVAILABLE" : "OUT_OF_STOCK");
         book.setCreateTime(LocalDateTime.now());
-
         Books savedBook = booksService.save(book);
         fillBranchName(savedBook);
         return ApiResponse.success("图书添加成功", savedBook);
@@ -106,7 +110,6 @@ public class BooksController {
         if (authService.isBranchAdmin() && !book.getBranchId().equals(authService.getCurrentUserBranchId())) {
             return ApiResponse.error(403, "无权修改其他分馆的图书");
         }
-
         // 部分更新：只修改非空字段
         if (bookDTO.getBookName() != null) book.setBookName(bookDTO.getBookName());
         if (bookDTO.getAuthor() != null) book.setAuthor(bookDTO.getAuthor());
@@ -115,11 +118,13 @@ public class BooksController {
         if (bookDTO.getTotalNum() != null) book.setTotalNum(bookDTO.getTotalNum());
         if (bookDTO.getAvailableNum() != null) {
             book.setAvailableNum(bookDTO.getAvailableNum());
-            book.setStatus(bookDTO.getAvailableNum() > 0 ? "normal" : "out_of_stock");
+            // 核心修复：同步状态为AVAILABLE/OUT_OF_STOCK
+            book.setStatus(bookDTO.getAvailableNum() > 0 ? "AVAILABLE" : "OUT_OF_STOCK");
         }
-        if (bookDTO.getStatus() != null) book.setStatus(bookDTO.getStatus());
-
-        // 核心修复：BooksService 无 update 方法，使用 save 方法（JPA 新增/更新通用）
+        // 若直接传递status，确保值与数据库一致
+        if (bookDTO.getStatus() != null) {
+            book.setStatus(bookDTO.getStatus());
+        }
         Books updatedBook = booksService.save(book);
         fillBranchName(updatedBook);
         return ApiResponse.success("图书更新成功", updatedBook);
@@ -144,23 +149,21 @@ public class BooksController {
 
     @PostMapping("/query")
     public ApiResponse<?> queryBooks(@RequestBody BookQueryDTO dto) {
-
         Pageable pageable = PageRequest.of(
                 dto.getPageNum() - 1,
                 dto.getPageSize()
         );
-
+        // 核心修正：调整参数顺序，与BooksService.findBooks方法定义一致
         Page<Books> booksPage = booksService.findBooks(
                 dto.getBranchId(),
                 dto.getBookName(),
                 dto.getAuthor(),
                 dto.getIsbn(),
-                dto.getBookType(),
-                dto.getStatus(),
-                dto.getCategory(),
+                dto.getCategory(),  // 第5个参数：category
+                dto.getBookType(),  // 第6个参数：bookType
+                dto.getStatus(),    // 第7个参数：status（可借状态）
                 pageable
         );
-
         // ⭐⭐ 关键：Entity → DTO 映射
         Page<BookListDTO> dtoPage = booksPage.map(book -> {
             BookListDTO d = new BookListDTO();
@@ -172,15 +175,12 @@ public class BooksController {
             d.setBookType(book.getBookType());
             d.setAvailableNum(book.getAvailableNum());
             d.setStatus(book.getStatus());
-
             d.setBranchId(book.getBranchId());
             d.setBranchName(
                     book.getBranch() != null ? book.getBranch().getBranchName() : null
             );
-
             return d;
         });
-
         return ApiResponse.success(dtoPage);
     }
 

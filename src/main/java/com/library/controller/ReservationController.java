@@ -1,8 +1,10 @@
 package com.library.controller;
 
 import com.library.dto.ApiResponse;
+import com.library.dto.ReservationCreateDTO;
 import com.library.service.ReservationService;
 import com.library.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,28 +20,15 @@ public class ReservationController {
     private final ReservationService reservationService;
     private final AuthService authService;
 
-    /**
-     * 获取当前用户的预定列表（支持状态筛选）
-     * 核心修复：添加 status 参数接收，传递给 Service
-     */
-    @GetMapping("/my-reservation")
-    public ApiResponse<?> getMyReservations(
-            @RequestParam(required = false) String status, // 新增：接收前端传递的状态参数
-            Pageable pageable) {
-        // 调用 Service 方法，传递 status 和 pageable 两个参数
-        return reservationService.getMyReservations(status, pageable);
-    }
 
     /**
-     * 预定图书
+     * 预定图书（核心修改：用@RequestBody接收JSON参数）
      */
     @PostMapping("/reserve")
-    public ApiResponse<?> reserveBook(
-            @RequestParam Long bookId,
-            @RequestParam Integer branchId) {
-        return reservationService.reserveBook(bookId, branchId);
+    public ApiResponse<?> reserveBook(@Valid @RequestBody ReservationCreateDTO dto) {
+        // 传递DTO中的bookId和branchId到Service
+        return reservationService.reserveBook(dto.getBookId(), dto.getBranchId());
     }
-
     /**
      * 取消预定
      */
@@ -49,7 +38,15 @@ public class ReservationController {
     }
 
     /**
-     * 查看图书预定队列
+     * 获取用户个人预定记录
+     */
+    @GetMapping("/my-reservation")
+    public ApiResponse<?> getMyReservations(@RequestParam(required = false) String status, Pageable pageable) {
+        return reservationService.getMyReservations(status, pageable);
+    }
+
+    /**
+     * 获取图书预定队列（按预定时间排序）
      */
     @GetMapping("/book/{bookId}/queue")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
@@ -76,7 +73,7 @@ public class ReservationController {
     }
 
     /**
-     * 管理员获取所有预定记录（支持多条件筛选+按图书ID排序）
+     * 管理员获取所有预定记录（支持图书状态筛选）
      */
     @GetMapping("/all")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
@@ -84,10 +81,8 @@ public class ReservationController {
             @RequestParam(required = false) String userName,
             @RequestParam(required = false) String bookName,
             @RequestParam(required = false) Integer branchId,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize) {
-        Pageable pageable = org.springframework.data.domain.PageRequest.of(pageNum - 1, pageSize);
-        return reservationService.getAllReservations(userName, bookName, branchId, status, pageable);
+            @RequestParam(required = false) String bookStatus,
+            Pageable pageable) {
+        return reservationService.getAllReservations(userName, bookName, branchId, bookStatus, pageable);
     }
 }

@@ -1,15 +1,14 @@
-// src/api/fines.js 完整修复代码（可直接替换）
 import request from '@/utils/request'
 
-// 核心修复：规范分页参数传递，兼容后端 Pageable
+// 核心修复：参数名从 page/size 改为 pageNum/pageSize，适配后端 Pageable 接收格式
 export function getMyFines(params = { pageNum: 1, pageSize: 10, payStatus: '' }) {
     return request({
         url: '/fines/my-fines',
         method: 'get',
         params: {
-            page: params.pageNum - 1, // 后端 Pageable 从 0 开始，前端 pageNum 从 1 开始
-            size: params.pageSize || 10, // 默认页大小 10
-            payStatus: params.payStatus || undefined // 空状态不传递参数
+            pageNum: params.pageNum || 1, // 前端页码从1开始，后端自动转换为Pageable
+            pageSize: params.pageSize || 10,
+            payStatus: params.payStatus || undefined // 空状态不传递，避免后端处理无效参数
         }
     })
 }
