@@ -1,4 +1,3 @@
-//src/main/java/com/library/entity/Reservation.java
 package com.library.entity;
 
 import jakarta.persistence.*;
@@ -32,9 +31,10 @@ public class Reservation {
     @Column(nullable = false)
     private Integer branchId;
 
+    // 对齐数据库状态：PENDING/READY/CANCELLED/COMPLETED（删除BORROWING）
     public enum ReservationStatus {
         PENDING,    // 等待中
-        READY,      // 图书可借
+        READY,      // 可借阅
         CANCELLED,  // 已取消
         COMPLETED   // 已完成
     }

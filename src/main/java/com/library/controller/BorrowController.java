@@ -1,10 +1,9 @@
-//src/main/java/com/library/controller/BorrowController.java
 package com.library.controller;
 
 import com.library.dto.ApiResponse;
 import com.library.dto.BorrowCreateDTO;
 import com.library.service.AuthService;
-import com.library.service.BorrowService; // 新增：导入 BorrowService 接口
+import com.library.service.BorrowService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +20,7 @@ public class BorrowController {
 
     /**
      * 用户借阅图书
+     * 接收图书ID和分馆ID，校验后创建借阅记录
      */
     @PostMapping
     public ApiResponse<?> borrowBook(@Valid @RequestBody BorrowCreateDTO borrowDTO) {
@@ -71,12 +71,14 @@ public class BorrowController {
     @GetMapping("/all")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
     public ApiResponse<?> getAllBorrowRecords(
+            @RequestParam(required = false) String userName,
+            @RequestParam(required = false) String bookName,
             @RequestParam(required = false) Integer branchId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return borrowService.getAllBorrowRecords(branchId, status, pageable);
+        return borrowService.getAllBorrowRecords(userName, bookName, branchId, status, pageable);
     }
 
     /**

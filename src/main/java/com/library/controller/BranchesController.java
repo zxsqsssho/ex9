@@ -1,11 +1,12 @@
-//src/main/java/com/library/controller/BranchesController.java
 package com.library.controller;
 
 import com.library.dto.ApiResponse;
 import com.library.entity.Branches;
-import com.library.service.BranchesService;
+import com.library.repository.BranchesRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -13,15 +14,14 @@ import java.util.List;
 @RequestMapping("/api/branches")
 @RequiredArgsConstructor
 public class BranchesController {
-
-    private final BranchesService branchesService;
+    private final BranchesRepository branchesRepository;
 
     /**
-     * 获取所有分馆（给前端下拉框用）
+     * 获取所有分馆列表（公开接口，无需管理员权限）
      */
     @GetMapping
-    public ApiResponse<List<Branches>> getAllBranches() {
-        return ApiResponse.success(branchesService.findAll());
+    public ApiResponse<?> getAllBranches() {
+        List<Branches> branches = branchesRepository.findAll();
+        return ApiResponse.success(branches);
     }
 }
-

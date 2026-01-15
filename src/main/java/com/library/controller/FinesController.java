@@ -1,11 +1,9 @@
-// src/main/java/com/library/controller/FineController.java
 package com.library.controller;
 
 import com.library.dto.ApiResponse;
 import com.library.service.FineService;
 import com.library.service.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,72 +13,72 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/fines")
 @RequiredArgsConstructor
-public class FineController {
+public class FinesController {
     private final FineService fineService;
+    private final AuthService authService;
 
     /**
-     * 获取当前用户罚款记录
+     * 获取当前用户的罚款记录（支持支付状态筛选）
+     * 核心修复：添加 payStatus 参数接收，传递给 Service
      */
     @GetMapping("/my-fines")
     public ApiResponse<?> getMyFines(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return fineService.getMyFines(pageable);
+            @RequestParam(required = false) String payStatus, // 接收前端传递的支付状态参数
+            Pageable pageable) {
+        // 调用 Service 方法，传递 2 个参数（与 Service 定义一致）
+        return fineService.getMyFines(payStatus, pageable);
     }
 
-    /**
-     * 支付罚款
-     */
+    // 其他方法保持不变...
     @PostMapping("/pay/{fineId}")
     public ApiResponse<?> payFine(@PathVariable Long fineId) {
         return fineService.payFine(fineId);
     }
 
-    /**
-     * 批量支付罚款
-     */
     @PostMapping("/batch-pay")
     public ApiResponse<?> batchPayFines(@RequestBody List<Long> fineIds) {
         return fineService.batchPayFines(fineIds);
     }
 
-    /**
-     * 获取罚款详情
-     */
     @GetMapping("/{fineId}")
     public ApiResponse<?> getFineDetail(@PathVariable Long fineId) {
         return fineService.getFineDetail(fineId);
     }
 
-    /**
-     * 申请减免罚款
-     */
     @PostMapping("/{fineId}/apply-reduction")
-    public ApiResponse<?> applyFineReduction(@PathVariable Long fineId, @RequestParam String reason) {
+    public ApiResponse<?> applyFineReduction(
+            @PathVariable Long fineId,
+            @RequestParam String reason) {
         return fineService.applyFineReduction(fineId, reason);
     }
 
-    /**
-     * 管理员获取所有罚款记录
-     */
     @GetMapping("/all")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
     public ApiResponse<?> getAllFines(
-            @RequestParam(required = false) Integer branchId,
+            @RequestParam(required = false) String userName,
+            @RequestParam(required = false) String bookName,
             @RequestParam(required = false) String payStatus,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return fineService.getAllFines(branchId, payStatus, pageable);
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(pageNum - 1, pageSize);
+        Integer branchId = null;
+        if (authService.isBranchAdmin()) {
+            branchId = authService.getCurrentUserBranchId();
+        }
+        return fineService.getAllFines(
+                userName,
+                bookName,
+                branchId,
+                payStatus,
+                pageable
+        );
     }
 
-    /**
-     * 管理员更新罚款状态
-     */
     @PutMapping("/{fineId}/status")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
-    public ApiResponse<?> updateFineStatus(@PathVariable Long fineId, @RequestParam String status) {
+    public ApiResponse<?> updateFineStatus(
+            @PathVariable Long fineId,
+            @RequestParam String status) {
         return fineService.updateFineStatus(fineId, status);
     }
 }

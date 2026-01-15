@@ -1,16 +1,20 @@
-// src/api/fines.js
-// 罚款相关API请求
+// src/api/fines.js 完整修复代码（可直接替换）
 import request from '@/utils/request'
 
-// 获取我的罚款记录
-export function getMyFines() {
+// 核心修复：规范分页参数传递，兼容后端 Pageable
+export function getMyFines(params = { pageNum: 1, pageSize: 10, payStatus: '' }) {
     return request({
         url: '/fines/my-fines',
-        method: 'get'
+        method: 'get',
+        params: {
+            page: params.pageNum - 1, // 后端 Pageable 从 0 开始，前端 pageNum 从 1 开始
+            size: params.pageSize || 10, // 默认页大小 10
+            payStatus: params.payStatus || undefined // 空状态不传递参数
+        }
     })
 }
 
-// 支付罚款
+// 其他方法保持不变
 export function payFine(fineId) {
     return request({
         url: `/fines/pay/${fineId}`,
@@ -18,7 +22,6 @@ export function payFine(fineId) {
     })
 }
 
-// 批量支付罚款
 export function batchPayFines(fineIds) {
     return request({
         url: '/fines/batch-pay',
@@ -27,7 +30,6 @@ export function batchPayFines(fineIds) {
     })
 }
 
-// 获取罚款详情
 export function getFineDetail(fineId) {
     return request({
         url: `/fines/${fineId}`,
@@ -35,7 +37,6 @@ export function getFineDetail(fineId) {
     })
 }
 
-// 申请减免罚款
 export function applyFineReduction(fineId, reason) {
     return request({
         url: `/fines/${fineId}/apply-reduction`,
@@ -44,7 +45,6 @@ export function applyFineReduction(fineId, reason) {
     })
 }
 
-// 获取所有罚款记录（管理员用）
 export function getAllFines(params) {
     return request({
         url: '/fines/all',
@@ -53,7 +53,6 @@ export function getAllFines(params) {
     })
 }
 
-// 更新罚款状态（管理员用）
 export function updateFineStatus(fineId, status) {
     return request({
         url: `/fines/${fineId}/status`,

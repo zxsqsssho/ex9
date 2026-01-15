@@ -1,8 +1,5 @@
-// src/main/java/com/library/service/impl/BooksServiceImpl.java
 package com.library.service.impl;
 
-import com.library.dto.BookCreateDTO;
-import com.library.dto.BookUpdateDTO;
 import com.library.entity.Books;
 import com.library.repository.BooksRepository;
 import com.library.service.BooksService;
@@ -13,75 +10,46 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-
 @Service
 @RequiredArgsConstructor
 public class BooksServiceImpl implements BooksService {
     private final BooksRepository booksRepository;
 
+    // 实现接口：分页查询所有图书
     @Override
     public Page<Books> findAll(Pageable pageable) {
         return booksRepository.findAll(pageable);
     }
 
+    // 实现接口：根据ID查询图书
     @Override
     public Books findById(Long id) {
         return booksRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("图书不存在"));
     }
 
+    // 实现接口：新增/修改图书
     @Override
     @Transactional
-    public Books save(BookCreateDTO bookDTO) {
-        Books book = new Books();
-        book.setBookName(bookDTO.getBookName());
-        book.setAuthor(bookDTO.getAuthor());
-        book.setIsbn(bookDTO.getIsbn());
-        book.setCategory(bookDTO.getCategory());
-        book.setBranchId(bookDTO.getBranchId());
-        book.setBookType(bookDTO.getBookType());
-        book.setTotalNum(bookDTO.getTotalNum());
-        book.setAvailableNum(bookDTO.getAvailableNum());
-        book.setStatus(bookDTO.getAvailableNum() > 0 ? "normal" : "out_of_stock");
-        book.setCreateTime(LocalDateTime.now());
-        return booksRepository.save(book);
+    public Books save(Books books) {
+        return booksRepository.save(books);
     }
 
-    @Override
-    @Transactional
-    public Books update(Long id, BookUpdateDTO bookDTO) {
-        Books book = findById(id);
-        if (bookDTO.getBookName() != null) {
-            book.setBookName(bookDTO.getBookName());
-        }
-        if (bookDTO.getAuthor() != null) {
-            book.setAuthor(bookDTO.getAuthor());
-        }
-        if (bookDTO.getCategory() != null) {
-            book.setCategory(bookDTO.getCategory());
-        }
-        if (bookDTO.getBookType() != null) {
-            book.setBookType(bookDTO.getBookType());
-        }
-        if (bookDTO.getTotalNum() != null) {
-            book.setTotalNum(bookDTO.getTotalNum());
-        }
-        if (bookDTO.getAvailableNum() != null) {
-            book.setAvailableNum(bookDTO.getAvailableNum());
-        }
-        if (bookDTO.getStatus() != null) {
-            book.setStatus(bookDTO.getStatus());
-        }
-        return booksRepository.save(book);
-    }
-
+    // 实现接口：根据ID删除图书
     @Override
     @Transactional
     public void deleteById(Long id) {
         booksRepository.deleteById(id);
     }
 
+    // 核心修复1：实现接口中缺失的 4 参数 findBooks 方法
+    @Override
+    public Page<Books> findBooks(Integer branchId, String bookName, String author, Pageable pageable) {
+        // 复用多条件查询逻辑，未传递的参数设为 null
+        return findBooks(branchId, bookName, author, null, null, null, null, pageable);
+    }
+
+    // 核心修复2：实现接口中 8 参数的重载 findBooks 方法（多条件查询）
     @Override
     public Page<Books> findBooks(
             Integer branchId,

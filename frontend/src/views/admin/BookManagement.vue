@@ -34,7 +34,7 @@
         </el-form-item>
       </el-form>
       <!-- 图书列表 -->
-      <el-table :data="bookList" border stripe v-loading="loading">
+      <el-table :data="bookList.content || []" border stripe v-loading="loading">
         <el-table-column prop="bookId" label="图书ID" width="80"></el-table-column>
         <el-table-column prop="bookName" label="图书名称" min-width="200"></el-table-column>
         <el-table-column prop="author" label="作者" width="120"></el-table-column>
@@ -61,26 +61,24 @@
         </el-table-column>
         <el-table-column label="操作" width="180">
           <template #default="scope">
-            <el-button type="text" @click="openEditDialog(scope.row)">编辑</el-button>
-            <!-- 修复：调用改名后的函数 handleDeleteBook -->
-            <el-button type="text" color="red" @click="handleDeleteBook(scope.row.bookId)" :disabled="scope.row.availableNum > 0">删除</el-button>
+            <el-button type="link" @click="openEditDialog(scope.row)">编辑</el-button>
+            <el-button type="link" color="red" @click="handleDeleteBook(scope.row.bookId)" :disabled="scope.row.availableNum > 0">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
       <!-- 分页 -->
       <el-pagination
-          v-if="total > 0"
+          v-if="bookList.total > 0"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
           :current-page="queryForm.pageNum"
           :page-sizes="[10, 20, 50]"
           :page-size="queryForm.pageSize"
           layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
+          :total="bookList.total"
           style="margin-top: 20px; text-align: right"
       ></el-pagination>
     </el-card>
-
     <!-- 新增/编辑图书弹窗 -->
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑图书' : '新增图书'" width="600px">
       <el-form :model="form" :rules="formRules" ref="formRef" label-width="120px">
@@ -121,22 +119,18 @@
     </el-dialog>
   </div>
 </template>
-
 <script setup>
 import { ref, reactive, onMounted, getCurrentInstance } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getBranchList } from '@/api/branch'
-// 导入的 API 函数保持原名（deleteBook）
 import { addBook, updateBook, deleteBook, searchBooks } from '@/api/book'
-
 const formRef = ref(null)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const loading = ref(false)
-const bookList = ref([])
+const bookList = ref({ content: [], total: 0 }) // 接收分页对象
 const branchList = ref([])
 const total = ref(0)
-
 // 查询条件
 const queryForm = reactive({
   bookName: '',
@@ -147,7 +141,6 @@ const queryForm = reactive({
   pageNum: 1,
   pageSize: 10
 })
-
 // 表单数据
 const form = reactive({
   bookId: '',
@@ -160,7 +153,6 @@ const form = reactive({
   totalNum: 0,
   availableNum: 0
 })
-
 // 表单校验规则
 const formRules = reactive({
   bookName: [{ required: true, message: '请输入图书名称', trigger: 'blur' }],
@@ -172,13 +164,11 @@ const formRules = reactive({
   totalNum: [{ required: true, message: '请输入总数量', trigger: 'blur' }, { type: 'number', min: 1, message: '总数量必须大于0', trigger: 'blur' }],
   availableNum: [{ required: true, message: '请输入可借数量', trigger: 'blur' }, { type: 'number', min: 0, message: '可借数量不能为负数', trigger: 'blur' }]
 })
-
 // 初始化
 onMounted(() => {
   loadBranchList()
   getBookList()
 })
-
 // 加载分馆列表
 const loadBranchList = async () => {
   try {
@@ -188,13 +178,12 @@ const loadBranchList = async () => {
     ElMessage.error('获取分馆列表失败')
   }
 }
-
 // 获取图书列表
 const getBookList = async () => {
   loading.value = true
   try {
     const res = await searchBooks(queryForm)
-    bookList.value = res.data.content
+    bookList.value = res.data // 后端返回Page对象
     total.value = res.data.totalElements
   } catch (err) {
     ElMessage.error('获取图书列表失败')
@@ -202,7 +191,6 @@ const getBookList = async () => {
     loading.value = false
   }
 }
-
 // 重置查询条件
 const resetQuery = () => {
   queryForm.bookName = ''
@@ -213,19 +201,16 @@ const resetQuery = () => {
   queryForm.pageNum = 1
   getBookList()
 }
-
 // 分页大小改变
 const handleSizeChange = (val) => {
   queryForm.pageSize = val
   getBookList()
 }
-
 // 当前页改变
 const handleCurrentChange = (val) => {
   queryForm.pageNum = val
   getBookList()
 }
-
 // 打开新增弹窗
 const openAddDialog = () => {
   isEdit.value = false
@@ -240,7 +225,6 @@ const openAddDialog = () => {
   form.availableNum = 0
   dialogVisible.value = true
 }
-
 // 打开编辑弹窗
 const openEditDialog = (row) => {
   isEdit.value = true
@@ -255,17 +239,14 @@ const openEditDialog = (row) => {
   form.availableNum = row.availableNum
   dialogVisible.value = true
 }
-
 // 提交表单
 const submitForm = async () => {
   try {
     await formRef.value.validate()
     if (isEdit.value) {
-      // 编辑图书
       await updateBook(form.bookId, form)
       ElMessage.success('编辑图书成功')
     } else {
-      // 新增图书
       await addBook(form)
       ElMessage.success('新增图书成功')
     }
@@ -275,8 +256,7 @@ const submitForm = async () => {
     ElMessage.error('操作失败')
   }
 }
-
-// 修复核心：函数名改为 handleDeleteBook，避免和导入的 deleteBook 冲突
+// 删除图书
 const handleDeleteBook = async (bookId) => {
   try {
     await ElMessageBox.confirm(
@@ -288,7 +268,6 @@ const handleDeleteBook = async (bookId) => {
           type: 'warning'
         }
     )
-    // 调用导入的 API 函数 deleteBook（无冲突）
     await deleteBook(bookId)
     ElMessage.success('删除图书成功')
     getBookList()
@@ -298,14 +277,12 @@ const handleDeleteBook = async (bookId) => {
     }
   }
 }
-
 // 获取分馆名称
 const getBranchName = (branchId) => {
   const branch = branchList.value.find(item => item.branchId === branchId)
   return branch ? branch.branchName : ''
 }
 </script>
-
 <style scoped>
 .book-management {
   padding: 20px;

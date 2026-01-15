@@ -23,4 +23,24 @@ public interface BooksRepository
     Page<Books> findByBookNameLikeAndAuthorLike(String bookName, String author, Pageable pageable);
     Page<Books> findByBranchIdAndBookNameLikeAndAuthorLike(Integer branchId, String bookName, String author, Pageable pageable);
     boolean existsByIsbn(String isbn);
+
+    // 核心新增：支持 branchId + bookName(模糊) + author(模糊) + isbn(精确) 多条件查询
+    Page<Books> findByBranchIdAndBookNameLikeAndAuthorLikeAndIsbn(
+            Integer branchId,
+            String bookName,
+            String author,
+            String isbn,
+            Pageable pageable);
+
+    // 核心补充：统计特定状态的图书数量（解决错误4、5）
+    long countByStatus(String status);
+
+    // 在 BooksRepository 中继续添加以下方法，适配不同条件组合
+    Page<Books> findByBookNameLikeAndAuthorLikeAndIsbn(String bookName, String author, String isbn, Pageable pageable);
+    Page<Books> findByBranchIdAndBookNameLikeAndIsbn(Integer branchId, String bookName, String isbn, Pageable pageable);
+    Page<Books> findByBranchIdAndAuthorLikeAndIsbn(Integer branchId, String author, String isbn, Pageable pageable);
+    Page<Books> findByBranchIdAndIsbn(Integer branchId, String isbn, Pageable pageable);
+    Page<Books> findByBookNameLikeAndIsbn(String bookName, String isbn, Pageable pageable);
+    Page<Books> findByAuthorLikeAndIsbn(String author, String isbn, Pageable pageable);
+    Page<Books> findByIsbn(String isbn, Pageable pageable);
 }

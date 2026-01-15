@@ -3,11 +3,17 @@
 import request from '@/utils/request'
 
 // 获取所有分馆列表
-export function getAllBranches() {
+// 新增兼容函数，适配组件调用
+export function getBranchList() {
     return request({
         url: '/branches',
         method: 'get'
     })
+}
+
+// 保留原函数，兼容旧代码
+export function getAllBranches() {
+    return getBranchList()
 }
 
 // 获取分馆详情

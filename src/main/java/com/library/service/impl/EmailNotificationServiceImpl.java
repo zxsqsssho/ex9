@@ -56,7 +56,7 @@ public class EmailNotificationServiceImpl implements EmailNotificationService {
             Reservation reservation = reservationRepository.findById(reservationId)
                     .orElseThrow(() -> new RuntimeException("预定记录不存在"));
 
-            if (reservation.getStatus() != Reservation.ReservationStatus.READY) {
+            if (reservation.getStatus() != Reservation.ReservationStatus.PENDING) {
                 log.warn("图书尚未准备就绪，预定ID: {}", reservationId);
                 return;
             }
@@ -234,7 +234,7 @@ public class EmailNotificationServiceImpl implements EmailNotificationService {
         try {
             // 查找状态为READY的预定记录
             List<Reservation> readyReservations = reservationRepository
-                    .findByStatus(Reservation.ReservationStatus.READY);
+                    .findByStatus(Reservation.ReservationStatus.PENDING);
 
             log.info("找到 {} 个准备就绪的预定记录", readyReservations.size());
 

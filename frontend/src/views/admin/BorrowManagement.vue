@@ -1,6 +1,6 @@
-<!--frontend/src/views/admin/BorrowManagement.vue-->
 <template>
   <div class="borrow-management">
+    <!-- 借阅管理 -->
     <el-card>
       <div class="card-header">
         <h2>借阅管理</h2>
@@ -30,8 +30,14 @@
           <el-button @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
-      <!-- 借阅记录列表 -->
-      <el-table :data="borrowList" border stripe v-loading="loading">
+      <!-- 借阅记录列表：添加固定高度和滑块 -->
+      <el-table
+          :data="borrowList.content || []"
+          border
+          stripe
+          v-loading="loading"
+          class="fixed-height-table"
+      >
         <el-table-column prop="id" label="记录ID" width="80"></el-table-column>
         <el-table-column prop="userRealName" label="用户名称" width="120"></el-table-column>
         <el-table-column prop="bookName" label="图书名称" min-width="200"></el-table-column>
@@ -43,7 +49,7 @@
         <el-table-column prop="borrowTime" label="借阅时间" width="180"></el-table-column>
         <el-table-column prop="dueTime" label="应还时间" width="180">
           <template #default="scope">
-            <span :class="scope.row.status === 'OVERDUE' ? 'text-red' : ''">
+            <span :class="scope.row.overdueDays > 0 ? 'text-red' : ''">
               {{ scope.row.dueTime }}
               <span v-if="scope.row.overdueDays > 0">(逾期{{ scope.row.overdueDays }}天)</span>
             </span>
@@ -62,7 +68,7 @@
             <el-button type="primary" size="small" @click="handleReturn(scope.row.id)" v-if="scope.row.status === 'BORROWED' || scope.row.status === 'OVERDUE'">
               确认归还
             </el-button>
-            <el-button type="text" color="blue" size="small" @click="viewFine(scope.row.id)" v-if="scope.row.overdueDays > 0">
+            <el-button :link="true" color="blue" size="small" @click="viewFine(scope.row.id)" v-if="scope.row.overdueDays > 0">
               查看罚款
             </el-button>
           </template>
@@ -70,14 +76,14 @@
       </el-table>
       <!-- 分页 -->
       <el-pagination
-          v-if="total > 0"
+          v-if="borrowList.total > 0"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
           :current-page="queryForm.pageNum"
           :page-sizes="[10, 20, 50]"
           :page-size="queryForm.pageSize"
           layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
+          :total="borrowList.total"
           style="margin-top: 20px; text-align: right"
       ></el-pagination>
     </el-card>
@@ -87,11 +93,8 @@
       <div class="card-header">
         <h2>预定管理</h2>
       </div>
-      <!-- 预定筛选条件 -->
+      <!-- 预定筛选条件：删除预定状态，新增图书状态 -->
       <el-form :model="reserveQueryForm" inline class="query-form" @submit.prevent="getReservationList">
-        <el-form-item label="用户名称">
-          <el-input v-model="reserveQueryForm.userName" placeholder="请输入用户名称"></el-input>
-        </el-form-item>
         <el-form-item label="图书名称">
           <el-input v-model="reserveQueryForm.bookName" placeholder="请输入图书名称"></el-input>
         </el-form-item>
@@ -100,12 +103,12 @@
             <el-option v-for="branch in branchList" :key="branch.branchId" :label="branch.branchName" :value="branch.branchId"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="预定状态">
-          <el-select v-model="reserveQueryForm.status" placeholder="请选择状态">
-            <el-option label="等待中" value="PENDING"></el-option>
-            <el-option label="可借阅" value="READY"></el-option>
-            <el-option label="已取消" value="CANCELLED"></el-option>
-            <el-option label="已完成" value="COMPLETED"></el-option>
+        <!-- 新增：图书状态筛选（仅空闲/排队中） -->
+        <el-form-item label="图书状态">
+          <el-select v-model="reserveQueryForm.bookStatus" placeholder="请选择图书状态">
+            <el-option label="全部" value=""></el-option>
+            <el-option label="空闲" value="AVAILABLE"></el-option>
+            <el-option label="排队中" value="QUEUED"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -113,34 +116,33 @@
           <el-button @click="resetReserveQuery">重置</el-button>
         </el-form-item>
       </el-form>
-      <!-- 预定列表 -->
-      <el-table :data="reservationList" border stripe v-loading="reserveLoading">
-        <el-table-column prop="id" label="预定ID" width="80"></el-table-column>
-        <el-table-column prop="userRealName" label="用户名称" width="120"></el-table-column>
+      <!-- 预定列表：保留原有图书状态显示逻辑（无需修改） -->
+      <el-table
+          :data="reservationList.content || []"
+          border
+          stripe
+          v-loading="reserveLoading"
+          :default-sort="{ prop: 'bookId', order: 'asc' }"
+          class="fixed-height-table"
+      >
+        <el-table-column prop="bookId" label="图书ID" width="80"></el-table-column>
         <el-table-column prop="bookName" label="图书名称" min-width="200"></el-table-column>
+        <el-table-column prop="author" label="作者" width="120"></el-table-column>
         <el-table-column prop="branchName" label="所属分馆" width="120">
           <template #default="scope">
             {{ getBranchName(scope.row.branchId) }}
           </template>
         </el-table-column>
-        <el-table-column prop="reserveTime" label="预定时间" width="180"></el-table-column>
-        <el-table-column prop="expiryTime" label="预定有效期" width="180"></el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column label="图书状态" width="100">
           <template #default="scope">
-            <el-tag :type="getReserveStatusTagType(scope.row.status)">
-              {{ getReserveStatusText(scope.row.status) }}
+            <el-tag :type="scope.row.availableNum > 0 ? 'success' : 'info'">
+              {{ scope.row.availableNum > 0 ? '空闲' : '排队中' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220">
+        <el-table-column label="操作" width="120">
           <template #default="scope">
-            <el-button type="primary" size="small" @click="completeReservation(scope.row.id)" v-if="scope.row.status === 'READY'">
-              标记完成
-            </el-button>
-            <el-button type="danger" size="small" @click="cancelReservation(scope.row.id)" v-if="scope.row.status === 'PENDING' || scope.row.status === 'READY'">
-              取消预定
-            </el-button>
-            <el-button type="text" color="blue" size="small" @click="viewReservationQueue(scope.row.bookId)">
+            <el-button type="primary" size="small" @click="viewReservationQueue(scope.row.bookId)">
               查看队列
             </el-button>
           </template>
@@ -148,14 +150,14 @@
       </el-table>
       <!-- 预定分页 -->
       <el-pagination
-          v-if="reserveTotal > 0"
+          v-if="reservationList.total > 0"
           @size-change="handleReserveSizeChange"
           @current-change="handleReserveCurrentChange"
           :current-page="reserveQueryForm.pageNum"
           :page-sizes="[10, 20, 50]"
           :page-size="reserveQueryForm.pageSize"
           layout="total, sizes, prev, pager, next, jumper"
-          :total="reserveTotal"
+          :total="reservationList.total"
           style="margin-top: 20px; text-align: right"
       ></el-pagination>
     </el-card>
@@ -184,8 +186,14 @@
           <el-button @click="resetFineQuery">重置</el-button>
         </el-form-item>
       </el-form>
-      <!-- 罚款列表 -->
-      <el-table :data="fineList" border stripe v-loading="fineLoading">
+      <!-- 罚款列表：添加固定高度和滑块 -->
+      <el-table
+          :data="fineList.content || []"
+          border
+          stripe
+          v-loading="fineLoading"
+          class="fixed-height-table"
+      >
         <el-table-column prop="fineId" label="罚款ID" width="80"></el-table-column>
         <el-table-column prop="userRealName" label="用户名称" width="120"></el-table-column>
         <el-table-column prop="bookName" label="图书名称" min-width="200"></el-table-column>
@@ -216,21 +224,26 @@
       </el-table>
       <!-- 罚款分页 -->
       <el-pagination
-          v-if="fineTotal > 0"
+          v-if="fineList.total > 0"
           @size-change="handleFineSizeChange"
           @current-change="handleFineCurrentChange"
           :current-page="fineQueryForm.pageNum"
           :page-sizes="[10, 20, 50]"
           :page-size="fineQueryForm.pageSize"
           layout="total, sizes, prev, pager, next, jumper"
-          :total="fineTotal"
+          :total="fineList.total"
           style="margin-top: 20px; text-align: right"
       ></el-pagination>
     </el-card>
 
     <!-- 预定队列弹窗 -->
-    <el-dialog v-model="queueDialogVisible" title="图书预定队列" width="600px">
-      <el-table :data="reservationQueueList" border stripe>
+    <el-dialog v-model="queueDialogVisible" title="图书预定队列（按预定时间排序）" width="700px">
+      <el-table
+          :data="reservationQueueList.content || []"
+          border stripe
+          :default-sort="{ prop: 'reserveTime', order: 'asc' }"
+          class="fixed-height-table"
+      >
         <el-table-column prop="id" label="预定ID" width="80"></el-table-column>
         <el-table-column prop="userRealName" label="用户名称" width="120"></el-table-column>
         <el-table-column prop="reserveTime" label="预定时间" width="180"></el-table-column>
@@ -240,6 +253,34 @@
             <el-tag :type="getReserveStatusTagType(scope.row.status)">
               {{ getReserveStatusText(scope.row.status) }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="180">
+          <template #default="scope">
+            <el-button
+                type="primary"
+                size="small"
+                @click="handleQueueComplete(scope.row.id)"
+                v-if="scope.row.status === 'PENDING'"
+            >
+              标记完成（可借阅）
+            </el-button>
+            <el-button
+                type="danger"
+                size="small"
+                @click="handleQueueCancel(scope.row.id)"
+                v-if="scope.row.status === 'PENDING'"
+            >
+              取消预定
+            </el-button>
+            <el-button
+                type="success"
+                size="small"
+                @click="handleQueueComplete(scope.row.id)"
+                v-if="scope.row.status === 'READY'"
+            >
+              标记完成（已完成）
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -263,7 +304,8 @@ import {
   getAllReservations,
   cancelReservation as apiCancelReservation,
   completeReservation as apiCompleteReservation,
-  getBookReservationQueue
+  getBookReservationQueue,
+  updateReservationStatus
 } from '@/api/reservation'
 import {
   getAllFines,
@@ -277,8 +319,7 @@ const reserveLoading = ref(false)
 const fineLoading = ref(false)
 
 // 借阅记录数据
-const borrowList = ref([])
-const total = ref(0)
+const borrowList = ref({ content: [], total: 0 })
 const queryForm = reactive({
   userName: '',
   bookName: '',
@@ -288,21 +329,18 @@ const queryForm = reactive({
   pageSize: 10
 })
 
-// 预定管理数据
-const reservationList = ref([])
-const reserveTotal = ref(0)
+// 预定管理数据（无userName字段）
+const reservationList = ref({ content: [], total: 0 })
 const reserveQueryForm = reactive({
-  userName: '',
   bookName: '',
   branchId: '',
-  status: '',
+  bookStatus: '', // 新增：图书状态筛选字段
   pageNum: 1,
   pageSize: 10
 })
 
 // 罚款管理数据
-const fineList = ref([])
-const fineTotal = ref(0)
+const fineList = ref({ content: [], total: 0 })
 const fineQueryForm = reactive({
   userName: '',
   bookName: '',
@@ -313,7 +351,7 @@ const fineQueryForm = reactive({
 
 // 预定队列弹窗
 const queueDialogVisible = ref(false)
-const reservationQueueList = ref([])
+const reservationQueueList = ref({ content: [] })
 
 // 初始化
 onMounted(() => {
@@ -333,25 +371,20 @@ const loadBranchList = async () => {
   }
 }
 
-// ========== 借阅记录管理 ==========
-// 获取借阅记录列表
+// ========== 借阅管理 ==========
 const getBorrowList = async () => {
   loading.value = true
   try {
-    const res = await getAllBorrowRecords({
-      ...queryForm,
-      branchId: queryForm.branchId || undefined
-    })
-    borrowList.value = res.data.content
-    total.value = res.data.totalElements
+    const params = { ...queryForm, branchId: queryForm.branchId || undefined }
+    const res = await getAllBorrowRecords(params)
+    borrowList.value = res.data
   } catch (err) {
-    ElMessage.error('获取借阅记录失败')
+    ElMessage.error('获取借阅记录失败：' + (err.response?.data?.message || err.message))
   } finally {
     loading.value = false
   }
 }
 
-// 重置借阅筛选条件
 const resetQuery = () => {
   queryForm.userName = ''
   queryForm.bookName = ''
@@ -361,34 +394,23 @@ const resetQuery = () => {
   getBorrowList()
 }
 
-// 借阅分页大小改变
 const handleSizeChange = (val) => {
   queryForm.pageSize = val
   getBorrowList()
 }
 
-// 借阅当前页改变
 const handleCurrentChange = (val) => {
   queryForm.pageNum = val
   getBorrowList()
 }
 
-// 确认归还图书
 const handleReturn = async (borrowId) => {
   try {
-    await ElMessageBox.confirm(
-        '确认该图书已归还吗？',
-        '归还确认',
-        {
-          confirmButtonText: '确认归还',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-    )
+    await ElMessageBox.confirm('确认该图书已归还吗？', '归还确认', { type: 'warning' })
     await apiReturnBook(borrowId)
     ElMessage.success('归还成功')
     getBorrowList()
-    getFineList() // 刷新罚款列表
+    getFineList()
   } catch (err) {
     if (err !== 'cancel') {
       ElMessage.error('归还失败')
@@ -396,10 +418,8 @@ const handleReturn = async (borrowId) => {
   }
 }
 
-// 查看罚款详情
 const viewFine = (borrowId) => {
-  // 筛选当前借阅记录对应的罚款
-  const fine = fineList.value.find(item => item.recordId === borrowId)
+  const fine = fineList.value.content.find(item => item.recordId === borrowId)
   if (fine) {
     ElMessageBox.alert(
         `<div>
@@ -411,182 +431,137 @@ const viewFine = (borrowId) => {
         ${fine.payTime ? `<p>支付时间：${fine.payTime}</p>` : ''}
       </div>`,
         '罚款详情',
-        {
-          dangerouslyUseHTMLString: true,
-          confirmButtonText: '关闭'
-        }
+        { dangerouslyUseHTMLString: true }
     )
   } else {
     ElMessage.info('未查询到相关罚款记录')
   }
 }
 
-// 获取借阅状态标签类型
 const getStatusTagType = (status) => {
   switch (status) {
-    case 'BORROWED':
-      return 'primary'
-    case 'RETURNED':
-      return 'success'
-    case 'OVERDUE':
-      return 'danger'
-    default:
-      return 'default'
+    case 'BORROWED': return 'primary'
+    case 'RETURNED': return 'success'
+    case 'OVERDUE': return 'danger'
+    default: return 'default'
   }
 }
 
-// 获取借阅状态文本
 const getStatusText = (status) => {
   switch (status) {
-    case 'BORROWED':
-      return '借阅中'
-    case 'RETURNED':
-      return '已归还'
-    case 'OVERDUE':
-      return '已逾期'
-    default:
-      return status
+    case 'BORROWED': return '借阅中'
+    case 'RETURNED': return '已归还'
+    case 'OVERDUE': return '已逾期'
+    default: return status
   }
 }
 
 // ========== 预定管理 ==========
-// 获取预定列表
 const getReservationList = async () => {
   reserveLoading.value = true
   try {
-    const res = await getAllReservations({
+    const params = {
       ...reserveQueryForm,
-      branchId: reserveQueryForm.branchId || undefined
-    })
-    reservationList.value = res.data.content
-    reserveTotal.value = res.data.totalElements
+      branchId: reserveQueryForm.branchId || undefined,
+      sort: 'bookId,asc',
+      bookStatus: reserveQueryForm.bookStatus || undefined // 传递图书状态参数
+    }
+    const res = await getAllReservations(params)
+    reservationList.value = res.data
   } catch (err) {
-    ElMessage.error('获取预定记录失败')
+    ElMessage.error('获取预定记录失败：' + (err.response?.data?.message || err.message))
   } finally {
     reserveLoading.value = false
   }
 }
 
-// 重置预定筛选条件
 const resetReserveQuery = () => {
-  reserveQueryForm.userName = ''
   reserveQueryForm.bookName = ''
   reserveQueryForm.branchId = ''
-  reserveQueryForm.status = ''
+  reserveQueryForm.bookStatus = '' // 重置图书状态
   reserveQueryForm.pageNum = 1
   getReservationList()
 }
 
-// 预定分页大小改变
 const handleReserveSizeChange = (val) => {
   reserveQueryForm.pageSize = val
   getReservationList()
 }
 
-// 预定当前页改变
 const handleReserveCurrentChange = (val) => {
   reserveQueryForm.pageNum = val
   getReservationList()
 }
 
-// 取消预定
-const cancelReservation = async (reservationId) => {
-  try {
-    await ElMessageBox.confirm(
-        '确认取消该预定吗？',
-        '取消预定确认',
-        {
-          confirmButtonText: '确认取消',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-    )
-    await apiCancelReservation(reservationId)
-    ElMessage.success('取消预定成功')
-    getReservationList()
-  } catch (err) {
-    if (err !== 'cancel') {
-      ElMessage.error('取消预定失败')
-    }
-  }
-}
-
-// 标记预定完成
-const completeReservation = async (reservationId) => {
-  try {
-    await ElMessageBox.confirm(
-        '确认该预定已完成吗？',
-        '完成确认',
-        {
-          confirmButtonText: '确认完成',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-    )
-    await apiCompleteReservation(reservationId)
-    ElMessage.success('标记完成成功')
-    getReservationList()
-  } catch (err) {
-    if (err !== 'cancel') {
-      ElMessage.error('标记完成失败')
-    }
-  }
-}
-
-// 查看预定队列
 const viewReservationQueue = async (bookId) => {
   try {
     const res = await getBookReservationQueue(bookId)
+    res.data.content = res.data.content.sort((a, b) => new Date(a.reserveTime) - new Date(b.reserveTime))
     reservationQueueList.value = res.data
     queueDialogVisible.value = true
   } catch (err) {
-    ElMessage.error('获取预定队列失败')
+    ElMessage.error('获取预定队列失败：' + (err.response?.data?.message || err.message))
   }
 }
 
-// 获取预定状态标签类型
-const getReserveStatusTagType = (status) => {
-  switch (status) {
-    case 'PENDING':
-      return 'info'
-    case 'READY':
-      return 'success'
-    case 'CANCELLED':
-      return 'danger'
-    case 'COMPLETED':
-      return 'primary'
-    default:
-      return 'default'
+const handleQueueComplete = async (reservationId) => {
+  try {
+    await ElMessageBox.confirm('确认执行该操作吗？', '操作确认', { type: 'warning' })
+    await updateReservationStatus(reservationId)
+    ElMessage.success('操作成功')
+    viewReservationQueue(reservationQueueList.content[0]?.bookId)
+    getReservationList()
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error('操作失败：' + (err.response?.data?.message || err.message))
+    }
   }
 }
 
-// 获取预定状态文本
+const handleQueueCancel = async (reservationId) => {
+  try {
+    await ElMessageBox.confirm('确认取消该预定吗？', '取消确认', { type: 'warning' })
+    await apiCancelReservation(reservationId)
+    ElMessage.success('取消成功')
+    viewReservationQueue(reservationQueueList.content[0]?.bookId)
+    getReservationList()
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error('取消失败：' + (err.response?.data?.message || err.message))
+    }
+  }
+}
+
 const getReserveStatusText = (status) => {
   switch (status) {
-    case 'PENDING':
-      return '等待中'
-    case 'READY':
-      return '可借阅'
-    case 'CANCELLED':
-      return '已取消'
-    case 'COMPLETED':
-      return '已完成'
-    default:
-      return status
+    case 'PENDING': return '等待中'
+    case 'READY': return '可借阅'
+    case 'CANCELLED': return '已取消'
+    case 'COMPLETED': return '已完成'
+    default: return status
+  }
+}
+
+const getReserveStatusTagType = (status) => {
+  switch (status) {
+    case 'PENDING': return 'info'
+    case 'READY': return 'primary'
+    case 'COMPLETED': return 'success'
+    case 'CANCELLED': return 'danger'
+    default: return 'default'
   }
 }
 
 // ========== 罚款管理 ==========
-// 获取罚款列表
 const getFineList = async () => {
   fineLoading.value = true
   try {
-    const res = await getAllFines({
+    const params = {
       ...fineQueryForm,
       payStatus: fineQueryForm.payStatus || undefined
-    })
-    fineList.value = res.data.content
-    fineTotal.value = res.data.totalElements
+    }
+    const res = await getAllFines(params)
+    fineList.value = res.data
   } catch (err) {
     ElMessage.error('获取罚款记录失败')
   } finally {
@@ -594,7 +569,6 @@ const getFineList = async () => {
   }
 }
 
-// 重置罚款筛选条件
 const resetFineQuery = () => {
   fineQueryForm.userName = ''
   fineQueryForm.bookName = ''
@@ -603,33 +577,22 @@ const resetFineQuery = () => {
   getFineList()
 }
 
-// 罚款分页大小改变
 const handleFineSizeChange = (val) => {
   fineQueryForm.pageSize = val
   getFineList()
 }
 
-// 罚款当前页改变
 const handleFineCurrentChange = (val) => {
   fineQueryForm.pageNum = val
   getFineList()
 }
 
-// 更新罚款状态
 const updateFineStatus = async (fineId, status) => {
   try {
     const statusText = status === 'paid' ? '已支付' : '未支付'
-    await ElMessageBox.confirm(
-        `确认将该罚款标记为${statusText}吗？`,
-        '状态更新确认',
-        {
-          confirmButtonText: '确认',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-    )
+    await ElMessageBox.confirm(`确认标记为${statusText}吗？`, '状态确认', { type: 'warning' })
     await apiUpdateFineStatus(fineId, status)
-    ElMessage.success(`罚款已标记为${statusText}`)
+    ElMessage.success(`标记为${statusText}成功`)
     getFineList()
   } catch (err) {
     if (err !== 'cancel') {
@@ -646,23 +609,31 @@ const getBranchName = (branchId) => {
 </script>
 
 <style scoped>
-.borrow-management {
-  padding: 20px;
+.borrow-management { padding: 20px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.query-form { margin-bottom: 20px; }
+.text-red { color: #f56c6c; font-weight: 500; }
+.el-dialog .el-table { width: 100%; }
+/* 适配link按钮样式 */
+.el-button--link { color: #409eff; }
+.el-button--link:hover { color: #66b1ff; }
+
+/* 核心修改：固定表格高度，超出显示滑块 */
+.fixed-height-table {
+  max-height: 400px; /* 固定高度，可按需调整 */
+  overflow-y: auto; /* 垂直滚动 */
+  overflow-x: hidden; /* 隐藏水平滚动（可选） */
 }
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+
+/* 优化滚动条样式（可选，提升美观度） */
+.fixed-height-table::-webkit-scrollbar {
+  width: 6px;
 }
-.query-form {
-  margin-bottom: 20px;
+.fixed-height-table::-webkit-scrollbar-thumb {
+  background-color: #c0c4cc;
+  border-radius: 3px;
 }
-.text-red {
-  color: #f56c6c;
-  font-weight: 500;
-}
-.el-dialog .el-table {
-  width: 100%;
+.fixed-height-table::-webkit-scrollbar-track {
+  background-color: #f5f5f5;
 }
 </style>

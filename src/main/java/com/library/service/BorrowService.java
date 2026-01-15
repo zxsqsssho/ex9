@@ -1,4 +1,3 @@
-// src/main/java/com/library/service/BorrowService.java
 package com.library.service;
 
 import com.library.dto.BorrowCreateDTO;
@@ -11,6 +10,9 @@ public interface BorrowService {
     ApiResponse<?> renewBook(Long bookId);
     ApiResponse<?> getMyBorrowList(Pageable pageable);
     ApiResponse<?> getMyBorrowHistory(Pageable pageable);
-    ApiResponse<?> getAllBorrowRecords(Integer branchId, String status, Pageable pageable);
+
+    // 【新增方法】支持userName和bookName筛选
+    ApiResponse<?> getAllBorrowRecords(String userName, String bookName, Integer branchId, String status, Pageable pageable);
+
     ApiResponse<?> updateBorrowStatus(Long borrowId, String status);
 }

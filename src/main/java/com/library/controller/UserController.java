@@ -143,13 +143,14 @@ public class UserController {
      * 访问权限：系统管理员(SYSTEM_ADMIN) 或 分馆管理员(BRANCH_ADMIN)
      * 说明：分馆管理员无此权限
      */
-    @GetMapping("hasRole('SYSTEM_ADMIN') or hasRole('BRANCH_ADMIN')")
+    @GetMapping("/branch/{branchId}") // 修复路径注解
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ApiResponse<?> getUsersByBranch(
-            @PathVariable Integer branchId,
+            @PathVariable Integer branchId, // 接收路径参数
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return userService.getUsersByBranch(branchId, pageable);
     }
+
 }

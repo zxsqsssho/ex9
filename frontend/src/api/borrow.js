@@ -2,6 +2,15 @@
 // 借阅相关API请求
 import request from '@/utils/request'
 
+// 新增：借阅图书（对齐后端 /api/borrow 接口）
+export function borrowBook(borrowDTO) {
+    return request({
+        url: '/borrow',
+        method: 'post',
+        data: borrowDTO
+    })
+}
+
 // 获取当前借阅列表
 export function getMyBorrowList() {
     return request({

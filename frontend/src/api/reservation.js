@@ -1,16 +1,20 @@
-// src/api/reservation.js
-// 预定相关API请求
+// src/api/reservation.js 完整修复
 import request from '@/utils/request'
 
-// 获取我的预定列表
-export function getMyReservations() {
+// 核心修改：接收 status 参数并传递
+export function getMyReservations(params = { pageNum: 1, pageSize: 10, status: '' }) {
     return request({
         url: '/reservation/my-reservation',
-        method: 'get'
+        method: 'get',
+        params: {
+            page: params.pageNum - 1, // 后端page从0开始
+            size: params.pageSize,
+            status: params.status || undefined // 空值不传递，避免筛选干扰
+        }
     })
 }
 
-// 取消预定
+// 其他方法保持不变...
 export function cancelReservation(reservationId) {
     return request({
         url: `/reservation/cancel/${reservationId}`,
@@ -18,16 +22,14 @@ export function cancelReservation(reservationId) {
     })
 }
 
-// 预定图书
-export function reserveBook(bookId) {
+export function reserveBook(bookId, branchId) {
     return request({
         url: '/reservation/reserve',
         method: 'post',
-        data: { bookId }
+        data: { bookId, branchId }
     })
 }
 
-// 获取图书的预定队列
 export function getBookReservationQueue(bookId) {
     return request({
         url: `/reservation/book/${bookId}/queue`,
@@ -35,7 +37,6 @@ export function getBookReservationQueue(bookId) {
     })
 }
 
-// 完成预定（管理员确认预定完成）
 export function completeReservation(reservationId) {
     return request({
         url: `/reservation/${reservationId}/complete`,
@@ -43,7 +44,13 @@ export function completeReservation(reservationId) {
     })
 }
 
-// 获取所有预定记录（管理员用）
+export function updateReservationStatus(reservationId) {
+    return request({
+        url: `/reservation/${reservationId}/update-status`,
+        method: 'post'
+    })
+}
+
 export function getAllReservations(params) {
     return request({
         url: '/reservation/all',

@@ -1,4 +1,3 @@
-<!--frontend/src/views/book/BookQuery.vue-->
 <template>
   <div class="book-query-page">
     <!-- 筛选条件 -->
@@ -38,7 +37,6 @@
         </el-form-item>
       </el-form>
     </el-card>
-
     <!-- 图书列表 -->
     <el-card shadow="hover" class="list-card">
       <el-table :data="bookList" border stripe v-loading="loading">
@@ -53,18 +51,28 @@
         <el-table-column label="操作" width="150">
           <template #default="scope">
             <el-button type="text" @click="toDetail(scope.row.bookId)">查看详情</el-button>
+            <!-- 条件渲染：可借数量>0显示借阅，否则显示预定 -->
             <el-button
                 type="primary"
                 size="small"
                 @click="handleBorrow(scope.row)"
                 :disabled="scope.row.availableNum <= 0"
+                v-if="scope.row.availableNum > 0"
             >
               借阅
+            </el-button>
+            <el-button
+                type="success"
+                size="small"
+                @click="handleReserve(scope.row)"
+                :disabled="scope.row.availableNum > 0"
+                v-else
+            >
+              预定
             </el-button>
           </template>
         </el-table-column>
       </el-table>
-
       <!-- 分页 -->
       <el-pagination
           v-if="total > 0"
@@ -88,6 +96,9 @@ import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from '@/utils/request'
+// 导入借阅和预定API方法
+import { borrowBook } from '@/api/borrow'
+import { reserveBook } from '@/api/reservation'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -142,13 +153,10 @@ const handleQuery = async () => {
   loading.value = true
   try {
     const res = await axios.post('/books/query', queryForm.value)
-
     // ⚠️ axios 已经在拦截器里拆过 data
     const pageData = res.data
-
     bookList.value = pageData.content
     total.value = pageData.totalElements
-
     // 后端页码从 0 开始
     queryForm.value.pageNum = pageData.number + 1
   } catch (error) {
@@ -157,8 +165,6 @@ const handleQuery = async () => {
     loading.value = false
   }
 }
-
-
 
 // 重置查询条件
 const resetQuery = () => {
@@ -196,7 +202,7 @@ const toDetail = (bookId) => {
 // 借阅图书
 const handleBorrow = async (book) => {
   try {
-    await axios.post('/borrow/create', {
+    await borrowBook({
       bookId: book.bookId,
       branchId: book.branchId
     })
@@ -206,8 +212,18 @@ const handleBorrow = async (book) => {
     ElMessage.error('借阅失败：' + (error.response?.data?.msg || error.message))
   }
 }
-</script>
 
+// 新增：预定图书
+const handleReserve = async (book) => {
+  try {
+    await reserveBook(book.bookId, book.branchId)
+    ElMessage.success('预定成功，预定有效期7天')
+    handleQuery() // 刷新列表，更新按钮状态
+  } catch (error) {
+    ElMessage.error('预定失败：' + (error.response?.data?.message || error.message))
+  }
+}
+</script>
 
 <style scoped>
 .book-query-page {
