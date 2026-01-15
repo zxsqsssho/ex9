@@ -129,24 +129,20 @@ onMounted(() => {
   handleQuery()
 })
 
-// 获取分馆列表
+// 获取分馆列表（所有角色通用）
 const getBranchList = async () => {
-  if (isAdmin) {
-    try {
-      const res = await axios.get('/branches')
-      branchList.value = res.data
-    } catch (err) {
-      ElMessage.error('获取分馆列表失败：' + (err.response?.data?.msg || err.message))
-      branchList.value = [{ branchId: 0, branchName: '默认分馆' }] // 后备列表
-    }
-  } else {
-    // 普通用户使用默认分馆列表
-    branchList.value = [
-      { branchId: 0, branchName: '总馆' }
-    ]
-    queryForm.value.branchId = 0
+  try {
+    const res = await axios.get('/branches')
+
+    // ⚠️ ApiResponse 结构
+    branchList.value = res.data
+
+  } catch (err) {
+    ElMessage.error('获取分馆列表失败：' + (err.response?.data?.msg || err.message))
+    branchList.value = []
   }
 }
+
 
 // 多条件查询图书
 const handleQuery = async () => {
